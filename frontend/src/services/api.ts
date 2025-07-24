@@ -1,13 +1,18 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
+
+// Get the API URL from environment variables or use default
+const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:5000/api';
 
 // Create axios instance
 const api = axios.create({
-  baseURL: 'http://YOUR_BACKEND_IP:5000/api', // Replace with your backend URL
+  baseURL: API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Important for cookies if using them
 });
 
 // Request interceptor to add auth token
