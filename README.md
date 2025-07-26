@@ -1,192 +1,104 @@
 # Event Notification System
 
-A full-stack notification system for event management built with React Native, Node.js, Express, and MongoDB, containerized with Docker.
-
-## Prerequisites
-
-- Docker (v20.10.0 or later)
-- Docker Compose (v2.0.0 or later)
-- Node.js (v14 or later) - Only needed for development outside Docker
-- npm or yarn - Only needed for development outside Docker
-- Expo Go app (for testing on mobile devices)
+A modern application with React Native frontend, Node.js/Express backend, MongoDB, and Nginx.
 
 ## Project Structure
 
-```
-event-notification-system/
-├── backend/               # Node.js/Express backend
-│   ├── controllers/       # Route controllers
-│   ├── middleware/        # Custom middleware
-│   ├── models/            # MongoDB models
-│   ├── routes/            # API routes
-│   ├── .env               # Environment variables
-│   ├── package.json       # Backend dependencies
-│   └── server.js          # Express server
-└── frontend/              # React Native frontend
-    ├── src/
-    │   ├── components/    # Reusable components
-    │   ├── context/       # React context providers
-    │   ├── screens/       # App screens
-    │   ├── services/      # API services
-    │   └── App.tsx        # Main app component
-    ├── package.json       # Frontend dependencies
-    └── app.json           # Expo configuration
-```
+- `/frontend` - React Native (Expo) mobile application
+- `/backend` - Node.js/Express API server
+- `/nginx` - Nginx reverse proxy configuration
 
-## Development with Docker (Recommended)
+## Prerequisites
 
-### Prerequisites
-- Ensure Docker and Docker Compose are installed on your system
-- Make sure ports 80, 5000, and 19000-19006 are available
+- Docker & Docker Compose
+- Node.js 18+ (for local development without Docker)
+- Expo Go app (for testing on mobile devices)
 
-### Quick Start
+## Getting Started
 
-1. Clone the repository and navigate to the project directory:
-   ```bash
-   git clone <repository-url>
-   cd event-notification-system
-   ```
+### With Docker (Recommended)
 
-2. Create a `.env` file in the backend directory with the following variables:
-   ```
-   PORT=5000
-   MONGODB_URI=mongodb://mongodb:27017/event-notification
-   JWT_SECRET=your_jwt_secret_key_here
-   NODE_ENV=development
-   ```
-
-3. Build and start all services:
-   ```bash
-   docker-compose up --build
-   ```
-   This will start:
-   - MongoDB on port 27017
-   - Backend API on port 5000
-   - Frontend on port 19000 (Expo)
-   - Nginx reverse proxy on port 80
-
-4. Access the application:
-   - Frontend: http://localhost
-   - Backend API: http://localhost/api
-   - MongoDB: mongodb://localhost:27017/event-notification
-
-### Development Workflow
-
-1. **Start services** (if not already running):
+1. **Start all services**
    ```bash
    docker-compose up -d
    ```
 
-2. **View logs** for a specific service:
+2. **Access the application**
+   - Frontend (Expo): http://localhost:19006
+   - Backend API: http://localhost:5000/api
+   - MongoDB: mongodb://localhost:27017/eventdb
+
+3. **View logs**
    ```bash
-   docker-compose logs -f backend  # or frontend, mongodb, nginx
+   docker-compose logs -f
    ```
 
-3. **Stop services**:
+4. **Stop services**
    ```bash
    docker-compose down
    ```
 
-4. **Rebuild a specific service** after making changes:
-   ```bash
-   docker-compose up -d --build <service_name>
-   ```
+### Without Docker (Development)
 
-## Development without Docker
+#### Backend
 
-### Backend Setup
-
-1. Navigate to the backend directory and install dependencies:
+1. Navigate to the backend directory:
    ```bash
    cd backend
+   ```
+
+2. Install dependencies:
+   ```bash
    npm install
    ```
 
-2. Create a `.env` file with the required variables (see above)
-
-3. Start the backend server:
+3. Start the development server:
    ```bash
    npm run dev
    ```
 
-### Frontend Setup
+#### Frontend
 
-1. Navigate to the frontend directory and install dependencies:
+1. Navigate to the frontend directory:
    ```bash
    cd frontend
+   ```
+
+2. Install dependencies:
+   ```bash
    npm install
    ```
 
-2. Start the Expo development server:
+3. Start the Expo development server:
    ```bash
    npx expo start
    ```
 
-3. Use the Expo Go app on your mobile device to scan the QR code, or use an emulator.
+4. Use the Expo Go app on your mobile device to scan the QR code, or use an emulator.
 
-## Features
+## Development Workflow
 
-- User authentication (login/register)
-- Real-time notifications
-- Mark notifications as read
-- Delete notifications
-- Notification history
-- Push notifications support
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register a new user
-- `POST /api/auth/login` - Login user
-- `POST /api/auth/logout` - Logout user
-
-### Notifications
-- `GET /api/notifications` - Get user notifications
-- `PATCH /api/notifications/:id/read` - Mark notification as read
-- `PATCH /api/notifications/read-all` - Mark all notifications as read
-- `DELETE /api/notifications/:id` - Delete a notification
-- `POST /api/notifications/register-device` - Register device for push notifications
+- The backend will automatically restart when you make changes to the code.
+- The frontend will hot-reload as you make changes.
+- The MongoDB data will persist in a Docker volume named `event-notification-system_mongodb_data`.
 
 ## Environment Variables
 
 ### Backend
-- `PORT` - Port to run the server on (default: 5000)
-- `MONGODB_URI` - MongoDB connection string (use `mongodb://mongodb:27017/event-notification` for Docker)
-- `JWT_SECRET` - Secret key for JWT token generation
-- `NODE_ENV` - Node environment (development/production)
 
-### Frontend
-- `REACT_APP_API_URL` - Backend API URL (automatically set in Docker)
+Create a `.env` file in the `backend` directory with the following variables:
 
-## Docker Configuration
-
-### Services
-- **backend**: Node.js/Express API server
-- **frontend**: React Native/Expo application
-- **mongodb**: MongoDB database
-- **nginx**: Reverse proxy for routing
-
-### Volumes
-- `mongodb_data`: Persistent storage for MongoDB data
-
-### Networks
-- `app-network`: Internal Docker network for service communication
-
-## Testing
-
-To test the application:
-
-1. Start both the backend and frontend servers
-2. Register a new user
-3. Log in with your credentials
-4. Test notification functionality
+```
+PORT=5000
+MONGODB_URI=mongodb://mongodb:27017/eventdb
+```
 
 ## Troubleshooting
 
-- If you encounter any issues with the MongoDB connection, ensure MongoDB is running
-- For Expo issues, try clearing the cache: `npx expo start -c`
-- Make sure your mobile device and computer are on the same network when testing on a physical device
+- If you encounter port conflicts, check which services are running and stop them.
+- Make sure Docker is running before starting the services.
+- If you change environment variables, you'll need to rebuild the containers.
 
 ## License
 
-This project is open source and available under the MIT License.
+This project is open source and available under the [MIT License](LICENSE).
