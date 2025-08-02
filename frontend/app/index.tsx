@@ -1,10 +1,13 @@
 import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
+import TestRefComponent from './test-ref'
 
 const Home = () => {
   return (
     <View style={styles.container}>
-      <Text>Home</Text>
+      <Text style={styles.title}>PEC Event App</Text>
+      <Text style={styles.subtitle}>React 19 + React Native 0.79.5</Text>
+      <TestRefComponent />
     </View>
   )
 }
@@ -16,5 +19,16 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        padding: 20,
+    },
+    title: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    subtitle: {
+        fontSize: 16,
+        color: '#666',
+        marginBottom: 20,
     }
 })
