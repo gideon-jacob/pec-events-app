@@ -82,6 +82,66 @@ A modern application with React Native frontend, Node.js/Express backend, MongoD
 - The frontend will hot-reload as you make changes.
 - The MongoDB data will persist in a Docker volume named `event-notification-system_mongodb_data`.
 
+## Notifications
+
+This application uses Expo Notifications (EAS) for push notifications and native notification handling.
+
+### Expo Notifications (EAS)
+
+The app leverages Expo's notification service for cross-platform push notifications:
+
+- **EAS Build**: Used for building native apps with notification capabilities
+- **Push Tokens**: Each device registers for push notifications and receives a unique token
+- **Server Integration**: Backend sends notifications via Expo's push notification service
+
+#### Setup Requirements
+
+1. **EAS CLI Installation**:
+   ```bash
+   npm install -g @expo/eas-cli
+   ```
+
+2. **EAS Login**:
+   ```bash
+   eas login
+   ```
+
+3. **Configure EAS Build**:
+   ```bash
+   eas build:configure
+   ```
+
+#### Notification Configuration
+
+The app includes:
+- Push token registration and management
+- Notification permission handling
+- Background notification processing
+- Custom notification sounds and badges
+
+### Native Notifications
+
+The application uses the `nativenotify` package for enhanced native notification capabilities:
+
+- **Local Notifications**: Scheduled notifications for upcoming events
+- **Background Processing**: Notifications triggered by app state changes
+- **Custom Actions**: Interactive notifications with action buttons
+- **Rich Notifications**: Support for images, sounds, and custom layouts
+
+#### NativeNotify Package
+
+The `nativenotify` package provides:
+- Cross-platform notification APIs
+- Advanced notification scheduling
+- Custom notification sounds and vibrations
+- Notification grouping and management
+- Deep linking support for notification actions
+
+#### Platform-Specific Features
+
+- **iOS**: Rich notifications, notification actions, and background app refresh
+- **Android**: Notification channels, priority levels, and custom notification styles
+
 ## Environment Variables
 
 ### Backend
@@ -91,6 +151,15 @@ Create a `.env` file in the `backend` directory with the following variables:
 ```
 PORT=5000
 MONGODB_URI=mongodb://mongodb:27017/eventdb
+EXPO_ACCESS_TOKEN=your_expo_access_token
+```
+
+### Frontend
+
+Create a `.env` file in the `frontend` directory with the following variables:
+
+```
+EXPO_PUBLIC_API_URL=http://localhost:5000/api
 ```
 
 ## Troubleshooting
