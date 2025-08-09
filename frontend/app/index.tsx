@@ -1,13 +1,20 @@
 import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import React, { useState, useEffect } from 'react';
-import axios, { AxiosError } from 'axios';
 import TestRefComponent from './test-ref';
 
 type ApiResponse = {
   message: string;
 };
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+const resolveApiBaseUrl = (): string => {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl && envUrl.trim() !== '') {
+    return envUrl.replace(/\/$/, '');
+  }
+
+  // Fallback for web or unknown
+  return 'http://localhost:5000';
+};
 
 const Home = () => {
   const [data, setData] = useState<ApiResponse | null>(null);
@@ -15,29 +22,65 @@ const Home = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+    let isCancelled = false;
+
     const fetchData = async () => {
       try {
-        const response = await axios.get<ApiResponse>(`${API_URL}/api/hello`);
-        setData(response.data);
-      } catch (err) {
-        const errorMessage = axios.isAxiosError(err)
-          ? (err as AxiosError).response?.data?.message || err.message 
-          : 'An unknown error occurred';
-        setError(errorMessage);
-        console.error('Error fetching data:', err);
+        const baseUrl = resolveApiBaseUrl();
+        const response = await fetch(`${baseUrl}/api/hello`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+        const json = (await response.json()) as ApiResponse;
+        if (!isCancelled) {
+          setData(json);
+        }
+      } catch (error: unknown) {
+        const aborted =
+          controller.signal.aborted ||
+          (typeof error === 'object' &&
+            error !== null &&
+            'name' in error &&
+            (error as any).name === 'AbortError');
+        if (aborted) {
+          return;
+        }
+
+        let errorMessage = 'An unknown error occurred';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        } else if (error && typeof error === 'object' && 'message' in error) {
+          errorMessage = String((error as any).message);
+        }
+        if (!isCancelled) {
+          setError(errorMessage);
+        }
+        console.error('Error fetching data:', error);
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     };
 
     fetchData();
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
   }, []);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>PEC Event App</Text>
       <Text style={styles.subtitle}>React 19 + React Native 0.79.5</Text>
-      
+
       {loading ? (
         <View style={styles.statusContainer}>
           <ActivityIndicator size="large" color="#0000ff" />
@@ -53,7 +96,7 @@ const Home = () => {
           <Text style={styles.dataText}>{data?.message}</Text>
         </View>
       )}
-      
+
       <TestRefComponent />
     </View>
   );

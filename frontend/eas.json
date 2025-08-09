@@ -1,0 +1,14 @@
+{
+  "build": {
+    "production": {
+      "android": { "buildType": "app-bundle" },
+      "ios": {
+        "distribution": "internal",
+        "enterpriseProvisioning": "universal"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "${EXPO_PUBLIC_API_URL}"
+      }
+    }
+  }
+}

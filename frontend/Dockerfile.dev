@@ -6,6 +6,8 @@ RUN adduser -S expo -u 1001
 
 WORKDIR /app
 
+ARG CI=false
+
 # Copy package files first for better caching
 COPY package*.json ./
 
@@ -34,4 +36,4 @@ USER expo
 EXPOSE 19000 19001 19002 8081
 
 # Start development server with tunnel
-CMD ["npx", "expo", "start", "--tunnel"]
+CMD ["npm", "run", "start"]
