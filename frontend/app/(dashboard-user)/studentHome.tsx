@@ -31,21 +31,7 @@ const Badge = ({ label, type }: { label: string; type: EventItem['type'] }) => (
 
 const EventCard = ({ item }: { item: typeof homeEvents[number] }) => (
   <Pressable style={styles.card} onPress={() => {
-    router.push({
-      pathname: '../eventDetail',
-      params: {
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        date: item.date,
-        time: item.time,
-        type: item.type,
-        venue: item.venue,
-        eligibility: item.eligibility,
-        fee: item.fee,
-        imageUrl: item.image?.uri,
-      }
-    })
+    router.push({ pathname: '../eventDetail', params: { id: item.id } })
   }}>
     {item.image ? (
       <Image source={item.image} style={styles.cover} resizeMode="cover" />
@@ -88,17 +74,17 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     backgroundColor: '#f1f5f9',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+  header:{
+    fontSize: 20,
+    marginTop: 20,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginVertical: 10
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#0f172a',
-    justifyContent: 'center',
     marginVertical: 10
   },
   card: {

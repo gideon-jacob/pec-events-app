@@ -38,6 +38,9 @@ const StudentSearch = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.header}>
+        Search Events
+      </Text>
 
       {/* Search Bar */}
       <View style={styles.searchBar}>
@@ -45,7 +48,7 @@ const StudentSearch = () => {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search events, workshops, etc."
+          placeholder="Search events"
           placeholderTextColor="#94a3b8"
           style={{ flex: 1, paddingVertical: 8 }}
         />
@@ -105,21 +108,7 @@ const StudentSearch = () => {
       <View style={{ marginTop: 8 }}>
         {filtered.map((e) => (
           <Pressable key={e.id} style={styles.resultRow} onPress={() => {
-            router.push({
-              pathname: '../eventDetail',
-              params: {
-                id: e.id,
-                title: e.title,
-                description: e.description,
-                date: e.date,
-                time: e.time,
-                type: e.category,
-                venue: e.venue,
-                eligibility: e.eligibility,
-                fee: e.fee,
-                imageUrl: e.image?.uri,
-              }
-            })
+            router.push({ pathname: '../eventDetail', params: { id: e.id } })
           }}>
             <Image source={e.image} style={styles.thumb} />
             <View style={{ flex: 1 }}>
@@ -146,6 +135,14 @@ export default StudentSearch
 const styles = StyleSheet.create({
 
   container: { padding: 16, paddingBottom: 28, backgroundColor: '#ffffff' },
+
+  header: {
+      fontSize: 20,
+      marginTop: 20,
+      fontWeight: '700',
+      color: '#0f172a',
+      marginVertical: 10
+  },
 
   title: { fontSize: 22, fontWeight: '800', color: '#0f172a', marginBottom: 12 },
 

@@ -127,4 +127,28 @@ const mappedHomeToSearch: SearchEvent[] = homeEvents.map((e, idx) => ({
 
 export const searchEvents: SearchEvent[] = [...mappedHomeToSearch, ...extraSearchEvents]
 
+// Backend-ready async facades. Replace implementations to integrate with API/MongoDB later.
+export async function listHomeEvents(): Promise<EventItem[]> {
+  // TODO (backend): replace with API call, e.g., await api.get('/events/home')
+  return Promise.resolve(homeEvents)
+}
+
+export async function listSearchEvents(): Promise<SearchEvent[]> {
+  // TODO (backend): replace with API call, e.g., await api.get('/events/search')
+  return Promise.resolve(searchEvents)
+}
+
+export async function getEventById(id: string): Promise<(EventItem | SearchEvent) | null> {
+  // Prefer searchEvents for details if present
+  const fromSearch = searchEvents.find((e) => e.id === id)
+  if (fromSearch) return Promise.resolve(fromSearch)
+
+  // If an "h"-prefixed id was used for home-mapped entries, normalize
+  const normalized = id.startsWith('h') ? id.slice(1) : id
+  const fromHome = homeEvents.find((e) => e.id === normalized)
+  if (fromHome) return Promise.resolve(fromHome)
+
+  return Promise.resolve(null)
+}
+
 

@@ -82,8 +82,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontWeight: '700',
     color: '#0f172a',
-    justifyContent: 'center',
-    marginVertical: 10
+    marginVertical: 10,
   },
   container: {
     flex: 1,

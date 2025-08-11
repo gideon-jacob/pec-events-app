@@ -1,7 +1,8 @@
-import React from 'react'
-import { ScrollView, StyleSheet, Text, View, Image, Pressable } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { ScrollView, StyleSheet, Text, View, Image, Pressable, ActivityIndicator } from 'react-native'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useLocalSearchParams } from 'expo-router'
+import { getEventById, type EventItem, type SearchEvent } from '../data/events'
 
 type Params = {
   id?: string
@@ -30,9 +31,35 @@ const LabelRow = ({ icon, label, value }: { icon: string; label: string; value: 
 
 export default function EventDetail() {
   const params = useLocalSearchParams<Params>()
+  const [loading, setLoading] = useState(true)
+  const [event, setEvent] = useState<(EventItem | SearchEvent) | null>(null)
 
-  const coverSrc = params.imageUrl
-    ? { uri: params.imageUrl }
+  useEffect(() => {
+    let isMounted = true
+    ;(async () => {
+      try {
+        if (!params.id) return
+        const data = await getEventById(params.id)
+        if (isMounted) setEvent(data)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    })()
+    return () => {
+      isMounted = false
+    }
+  }, [params.id])
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#9e0202" />
+      </View>
+    )
+  }
+
+  const coverSrc = (event as any)?.image?.uri
+    ? { uri: (event as any).image.uri }
     : { uri: 'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?w=1600&auto=format&fit=crop' }
 
   return (
@@ -41,18 +68,18 @@ export default function EventDetail() {
       <Image source={coverSrc} style={styles.cover} />
 
       {/* Title + Description */}
-      <Text style={styles.title}>{params.title || 'Event Title'}</Text>
+      <Text style={styles.title}>{event?.title || 'Event Title'}</Text>
       <Text style={styles.description}>
-        {params.description ||
+        {event?.description ||
           'Join us for an insightful session covering key strategies and tools to help you succeed. Whether you are a student or an aspiring professional, this event is for you.'}
       </Text>
 
       {/* Info list */}
-      <LabelRow icon="calendar-outline" label="Date & Time" value={`${params.date || 'July 20, 2024'}, ${params.time || '10:00 AM – 1:00 PM'}`} />
-      <LabelRow icon="location-outline" label="Venue" value={params.venue || 'College Auditorium (Offline)'} />
-      <LabelRow icon="people-outline" label="Eligibility" value={params.eligibility || 'Open to all students'} />
-      <LabelRow icon="pricetag-outline" label="Event Type" value={params.type || 'Seminar'} />
-      <LabelRow icon="cash-outline" label="Entry Fee" value={params.fee || 'Free'} />
+      <LabelRow icon="calendar-outline" label="Date & Time" value={`${(event as any)?.date || 'July 20, 2024'}, ${(event as any)?.time || '10:00 AM – 1:00 PM'}`} />
+      <LabelRow icon="location-outline" label="Venue" value={(event as any)?.venue || 'College Auditorium (Offline)'} />
+      <LabelRow icon="people-outline" label="Eligibility" value={(event as any)?.eligibility || 'Open to all students'} />
+      <LabelRow icon="pricetag-outline" label="Event Type" value={(event as any)?.type || (event as any)?.category || 'Seminar'} />
+      <LabelRow icon="cash-outline" label="Entry Fee" value={(event as any)?.fee || 'Free'} />
 
       {/* Organizers */}
       <Text style={styles.sectionTitle}>Organizers</Text>
