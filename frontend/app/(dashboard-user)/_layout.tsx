@@ -1,8 +1,17 @@
 import React from 'react'
-import { Tabs } from 'expo-router'
+import { Redirect, Tabs } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
+import { useAuth } from '../contexts/AuthContext'
 
-const DashBoardLayout = () => {
+const UserDashBoardLayout = () => {
+  const { state } = useAuth()
+
+  if (state.status === 'loading') return null
+  if (state.status === 'unauthenticated') return <Redirect href="/login" />
+  if (state.status === 'authenticated' && state.user.role !== 'user') {
+    return <Redirect href="/adminHome" />
+  }
+
   return (
     <Tabs
       screenOptions={{
@@ -19,14 +28,7 @@ const DashBoardLayout = () => {
         options={{
           title: 'Home',
           headerTitle: 'Prathyusha Events',
-          headerRight: () => (
-            <Icon
-              name="notifications-outline"
-              size={22}
-              color="#0f172a"
-              style={{ marginRight: 20 }}
-            />
-          ),
+          headerShown: false,
           tabBarIcon: ({ color, size, focused }) => (
             <Icon name={focused ? 'home' : 'home-outline'} size={size} color={color} />
           ),
@@ -37,6 +39,7 @@ const DashBoardLayout = () => {
         name="studentSearch"
         options={{
           title: 'Search Events',
+          headerShown: false,
           tabBarLabel: 'Search',
           tabBarIcon: ({ color, size, focused }) => (
             <Icon name={focused ? 'search' : 'search-outline'} size={size} color={color} />
@@ -48,6 +51,7 @@ const DashBoardLayout = () => {
         name="studentProfile"
         options={{
           title: 'Profile',
+          headerShown: false,
           tabBarIcon: ({ color, size, focused }) => (
             <Icon name={focused ? 'person' : 'person-outline'} size={size} color={color} />
           ),
@@ -78,4 +82,4 @@ const DashBoardLayout = () => {
   )
 }
 
-export default DashBoardLayout
+export default UserDashBoardLayout

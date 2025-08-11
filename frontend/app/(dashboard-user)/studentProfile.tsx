@@ -1,33 +1,52 @@
 import React from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Redirect, router } from 'expo-router'
+import { useAuth } from '../contexts/AuthContext'
 import Icon from 'react-native-vector-icons/Ionicons'
 
 const StudentProfile = () => {
+  const { state, signOut } = useAuth()
   const handleChangePassword = () => {
     // TODO: navigate to change password
     console.log('Change password pressed')
   }
 
-  const handleLogout = () => {
-    // TODO: clear auth state and navigate to login
-    console.log('Logout pressed')
+  const handleLogout = async () => {
+    await signOut()
+    router.replace('/login')
   }
+  
+  if (state.status === 'loading') {
+    return (
+      <View style={[styles.container, { justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color="#9e0202" />
+      </View>
+    )
+  }
+
+  if (state.status === 'unauthenticated') {
+    return <Redirect href="/login" />
+  }
+  
+  const username = state.user.registerNumber || state.user.name || 'Student'
 
   return (
     <View style={styles.container}>
+      <Text style={styles.header}>Profile</Text>
+
       {/* Avatar */}
       <View style={styles.avatarCircle}>
         <Icon name="person" size={48} color="#94a3b8" />
       </View>
 
       {/* Name + Reg no */}
-      <Text style={styles.name}>Asta Staria</Text>
-      <Text style={styles.reg}>Registration Number: 11142301AS04019</Text>
+      <Text style={styles.name}>{username}</Text>
+      <Text style={styles.reg}>Username: {username}</Text>
 
       {/* Info card */}
       <View style={styles.card}>
         <Text style={styles.label}>Name</Text>
-        <Text style={styles.value}>Asta Staria</Text>
+        <Text style={styles.value}>{username}</Text>
 
         <View style={styles.divider} />
 
@@ -57,6 +76,15 @@ const StudentProfile = () => {
 export default StudentProfile
 
 const styles = StyleSheet.create({
+
+  header:{
+    fontSize: 20,
+    marginTop: 20,
+    fontWeight: '700',
+    color: '#0f172a',
+    justifyContent: 'center',
+    marginVertical: 10
+  },
   container: {
     flex: 1,
     paddingTop: 36,

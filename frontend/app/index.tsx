@@ -38,7 +38,7 @@ const Home = () => {
 
       <Spacer/>
 
-      <Link href='/studentHome'>Student Dashboard</Link>
+      {/* <Link href='/studentHome'>Student Dashboard</Link> */}
 
       <TestRefComponent />
     </View>
