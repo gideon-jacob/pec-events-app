@@ -271,7 +271,7 @@ function Label({ text }: { text: string }) {
 
 const styles = StyleSheet.create({
   container: { padding: 16, backgroundColor: '#fff' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginTop: 15 },
   title: { fontSize: 20, fontWeight: '900', color: '#991b1b' },
   linkBack: { color: '#0ea5e9', fontWeight: '700' },
   label: { marginTop: 12, marginBottom: 6, color: '#334155', fontWeight: '700' },

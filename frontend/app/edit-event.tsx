@@ -30,7 +30,7 @@ export default function EditEventEntry() {
 
 const styles = StyleSheet.create({
   container: { padding: 16 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 15 },
   title: { fontSize: 20, fontWeight: '900', color: '#991b1b', marginBottom: 8 },
   linkBack: { color: '#0ea5e9', fontWeight: '700' },
   input: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, backgroundColor: '#fff' },
