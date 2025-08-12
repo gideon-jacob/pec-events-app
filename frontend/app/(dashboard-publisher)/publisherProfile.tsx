@@ -4,7 +4,7 @@ import Icon from 'react-native-vector-icons/Ionicons'
 import { useAuth } from '../contexts/AuthContext'
 import { router } from 'expo-router'
 
-const AdminProfile = () => {
+const PublisherProfile = () => {
   const { signOut } = useAuth()
 
   const handleLogout = async () => {
@@ -17,8 +17,8 @@ const AdminProfile = () => {
       <View style={styles.avatarCircle}>
         <Icon name="person" size={48} color="#94a3b8" />
       </View>
-      <Text style={styles.name}>Admin</Text>
-      <Text style={styles.sub}>Administrator Account</Text>
+      <Text style={styles.name}>Publisher</Text>
+      <Text style={styles.sub}>Publisher Account</Text>
 
       <Pressable style={styles.action} onPress={handleLogout}>
         <Text style={styles.actionText}>Log Out</Text>
@@ -28,7 +28,7 @@ const AdminProfile = () => {
   )
 }
 
-export default AdminProfile
+export default PublisherProfile
 
 const styles = StyleSheet.create({
   container: {
@@ -63,3 +63,5 @@ const styles = StyleSheet.create({
   },
   actionText: { color: '#9e0202', fontWeight: '800' },
 })
+
+

@@ -3,12 +3,12 @@ import { Redirect, Tabs } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useAuth } from '../contexts/AuthContext'
 
-const AdminDashBoardLayout = () => {
+const PublisherDashBoardLayout = () => {
   const { state } = useAuth()
 
   if (state.status === 'loading') return null
   if (state.status === 'unauthenticated') return <Redirect href="/login" />
-  if (state.status === 'authenticated' && state.user.role !== 'admin') {
+  if (state.status === 'authenticated' && state.user.role !== 'publisher') {
     return <Redirect href="/studentHome" />
   }
 
@@ -24,10 +24,10 @@ const AdminDashBoardLayout = () => {
       }}
     >
       <Tabs.Screen
-        name="adminHome"
+        name="publisherHome"
         options={{
           title: 'Home',
-          headerTitle: 'Admin Dashboard',
+          headerTitle: 'Publisher Dashboard',
           tabBarIcon: ({ color, size, focused }) => (
             <Icon name={focused ? 'home' : 'home-outline'} size={size} color={color} />
           ),
@@ -35,7 +35,7 @@ const AdminDashBoardLayout = () => {
       />
 
       <Tabs.Screen
-        name="adminProfile"
+        name="publisherProfile"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size, focused }) => (
@@ -47,6 +47,6 @@ const AdminDashBoardLayout = () => {
   )
 }
 
-export default AdminDashBoardLayout
+export default PublisherDashBoardLayout
 
 

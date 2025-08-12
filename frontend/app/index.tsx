@@ -18,8 +18,8 @@ const Home = () => {
 
   if (state.status === 'authenticated') {
     const role = state.user.role
-    if (role === 'admin') {
-      return <Redirect href="/adminHome" />
+    if (role === 'publisher') {
+      return <Redirect href="/publisherHome" />
     }
     return <Redirect href="/studentHome" />
   }

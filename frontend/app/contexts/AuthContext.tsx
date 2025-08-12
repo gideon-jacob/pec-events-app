@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-type Role = 'user' | 'admin'
+type Role = 'user' | 'publisher'
 
 type AuthUser = {
   role: Role

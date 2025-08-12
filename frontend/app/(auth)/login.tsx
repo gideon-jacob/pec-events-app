@@ -25,8 +25,8 @@ const Login = () => {
     if (usernameEmpty || passwordEmpty) return
 
     // Demo logic: infer role; replace with real auth API
-    const isAdmin = registerNumber.trim().toLowerCase().includes('admin')
-    await signIn({ role: isAdmin ? 'admin' : 'user', registerNumber })
+    const isPublisher = registerNumber.trim().toLowerCase().includes('publisher')
+    await signIn({ role: isPublisher ? 'publisher' : 'user', registerNumber })
     // Send to the index route which will redirect based on role
     router.replace('/')
   }
