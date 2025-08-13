@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { ScrollView, StyleSheet, Text, View, Image, Pressable, ActivityIndicator } from 'react-native'
+import { ScrollView, StyleSheet, Text, View, Image, Pressable, ActivityIndicator, Linking } from 'react-native'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useLocalSearchParams } from 'expo-router'
 import { getEventById, type EventItem, type SearchEvent } from '../data/events'
@@ -83,51 +83,92 @@ export default function EventDetail() {
 
       {/* Organizers */}
       <Text style={styles.sectionTitle}>Organizers</Text>
-      <View style={styles.orgRow}>
-        <View style={styles.orgAvatar}><Icon name="business-outline" size={18} color="#94a3b8" /></View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.orgName}>Prathyusha Engineering College</Text>
-          <Text style={styles.orgSub}>Department of Computer Science</Text>
-        </View>
-      </View>
-      <View style={styles.orgRow}>
-        <View style={styles.orgAvatar}><Icon name="people-circle-outline" size={18} color="#94a3b8" /></View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.orgName}>Entrepreneurship Cell</Text>
-          <Text style={styles.orgSub}>In association with IIC</Text>
-        </View>
-      </View>
+      {Array.isArray((event as any)?.organizers) && (event as any)?.organizers.length > 0 ? (
+        (event as any).organizers.map((org: { name: string; subtitle: string; icon?: string }, idx: number) => (
+          <View key={`${org.name}-${idx}`} style={styles.orgRow}>
+            <View style={styles.orgAvatar}>
+              <Icon name={(org.icon as string) || 'business-outline'} size={18} color="#94a3b8" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.orgName}>{org.name}</Text>
+              <Text style={styles.orgSub}>{org.subtitle}</Text>
+            </View>
+          </View>
+        ))
+      ) : (
+        <>
+          <View style={styles.orgRow}>
+            <View style={styles.orgAvatar}><Icon name="business-outline" size={18} color="#94a3b8" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.orgName}>Prathyusha Engineering College</Text>
+              <Text style={styles.orgSub}>Department of Computer Science</Text>
+            </View>
+          </View>
+          <View style={styles.orgRow}>
+            <View style={styles.orgAvatar}><Icon name="people-circle-outline" size={18} color="#94a3b8" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.orgName}>Entrepreneurship Cell</Text>
+              <Text style={styles.orgSub}>In association with IIC</Text>
+            </View>
+          </View>
+        </>
+      )}
 
       {/* Point of Contact */}
       <Text style={styles.sectionTitle}>Point of Contact</Text>
-      <View style={styles.pocCard}>
-        <View style={styles.pocLeft}>
-          <View style={styles.pocAvatar}><Icon name="person" size={18} color="#94a3b8" /></View>
-          <View>
-            <Text style={styles.pocName}>Rohan Sharma</Text>
-            <Text style={styles.pocRole}>Student Coordinator</Text>
-            <Text style={styles.pocPhone}>+91 98765 43210</Text>
+      {Array.isArray((event as any)?.contacts) && (event as any)?.contacts.length > 0 ? (
+        (event as any).contacts.map((c: { name: string; role: string; phone: string }, idx: number) => (
+          <View key={`${c.name}-${idx}`} style={styles.pocCard}>
+            <View style={styles.pocLeft}>
+              <View style={styles.pocAvatar}><Icon name="person" size={18} color="#94a3b8" /></View>
+              <View>
+                <Text style={styles.pocName}>{c.name}</Text>
+                <Text style={styles.pocRole}>{c.role}</Text>
+                <Text style={styles.pocPhone}>{c.phone}</Text>
+              </View>
+            </View>
+            <View style={styles.pocActions}>
+              <Pressable style={styles.circleBtn} onPress={() => Linking.openURL(`tel:${c.phone}`)}>
+                <Icon name="call" size={16} color="#0f172a" />
+              </Pressable>
+              <Pressable style={[styles.circleBtn, styles.circleBtnGreen]} onPress={() => Linking.openURL(`whatsapp://send?phone=${c.phone.replace(/\s/g, '')}`)}>
+                <Icon name="logo-whatsapp" size={16} color="#16a34a" />
+              </Pressable>
+            </View>
           </View>
-        </View>
-        <View style={styles.pocActions}>
-          <View style={styles.circleBtn}><Icon name="call" size={16} color="#0f172a" /></View>
-          <View style={[styles.circleBtn, styles.circleBtnGreen]}><Icon name="logo-whatsapp" size={16} color="#16a34a" /></View>
-        </View>
-      </View>
-      <View style={styles.pocCard}>
-        <View style={styles.pocLeft}>
-          <View style={styles.pocAvatar}><Icon name="person" size={18} color="#94a3b8" /></View>
-          <View>
-            <Text style={styles.pocName}>Priya Singh</Text>
-            <Text style={styles.pocRole}>Faculty Coordinator</Text>
-            <Text style={styles.pocPhone}>+91 98765 43211</Text>
+        ))
+      ) : (
+        <>
+          <View style={styles.pocCard}>
+            <View style={styles.pocLeft}>
+              <View style={styles.pocAvatar}><Icon name="person" size={18} color="#94a3b8" /></View>
+              <View>
+                <Text style={styles.pocName}>Rohan Sharma</Text>
+                <Text style={styles.pocRole}>Student Coordinator</Text>
+                <Text style={styles.pocPhone}>+91 98765 43210</Text>
+              </View>
+            </View>
+            <View style={styles.pocActions}>
+              <View style={styles.circleBtn}><Icon name="call" size={16} color="#0f172a" /></View>
+              <View style={[styles.circleBtn, styles.circleBtnGreen]}><Icon name="logo-whatsapp" size={16} color="#16a34a" /></View>
+            </View>
           </View>
-        </View>
-        <View style={styles.pocActions}>
-          <View style={styles.circleBtn}><Icon name="call" size={16} color="#0f172a" /></View>
-          <View style={[styles.circleBtn, styles.circleBtnGreen]}><Icon name="logo-whatsapp" size={16} color="#16a34a" /></View>
-        </View>
-      </View>
+          <View style={styles.pocCard}>
+            <View style={styles.pocLeft}>
+              <View style={styles.pocAvatar}><Icon name="person" size={18} color="#94a3b8" /></View>
+              <View>
+                <Text style={styles.pocName}>Priya Singh</Text>
+                <Text style={styles.pocRole}>Faculty Coordinator</Text>
+                <Text style={styles.pocPhone}>+91 98765 43211</Text>
+              </View>
+            </View>
+            <View style={styles.pocActions}>
+              <View style={styles.circleBtn}><Icon name="call" size={16} color="#0f172a" /></View>
+              <View style={[styles.circleBtn, styles.circleBtnGreen]}><Icon name="logo-whatsapp" size={16} color="#16a34a" /></View>
+            </View>
+          </View>
+        </>
+      )}
 
       {/* Interest CTA */}
       <Text style={styles.sectionTitleCentered}>Are you interested?</Text>
@@ -137,7 +178,13 @@ export default function EventDetail() {
       </View>
 
       {/* Register CTA */}
-      <Pressable style={styles.registerBtn}>
+      <Pressable
+        style={styles.registerBtn}
+        onPress={() => {
+          const url = (event as any)?.registrationLink
+          if (url) Linking.openURL(url)
+        }}
+      >
         <Text style={styles.registerText}>Register Now</Text>
       </Pressable>
     </ScrollView>
