@@ -13,7 +13,8 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
-import { listSearchEvents, SearchEvent } from '../data/events'
+import { SearchEvent } from '../data/events'
+import { mockApi } from '../services/mockApi'
 
 const departments = ['All Departments', 'CSE', 'AIML', 'AIDS', 'ECE', 'MECH', 'CIVIL', 'EEE'] as const
 const categories = ['All', 'Seminar', 'Workshop', 'Guest Lecture', 'Industrial Visit', 'Cultural', 'Sports'] as const
@@ -31,7 +32,7 @@ const PublisherHome = () => {
   React.useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const fetchedEvents = await listSearchEvents()
+        const fetchedEvents = await mockApi.listSearchEvents()
         setEvents(fetchedEvents)
       } catch (error) {
         console.error('Error fetching events:', error)

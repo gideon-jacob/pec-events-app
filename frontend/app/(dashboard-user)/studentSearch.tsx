@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   Image,
   ScrollView,
@@ -12,10 +12,10 @@ import {
 } from 'react-native'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { router } from 'expo-router'
-import { searchEvents } from '../data/events'
+import { mockApi } from '../services/mockApi'
+import type { SearchEvent } from '../data/events'
 
-// data moved to ../data/events so Home events are visible here too
-const allEvents = searchEvents
+const allEventsInitial: SearchEvent[] = []
 
 const departments = ['All Departments', 'CSE', 'ECE', 'MECH', 'CIVIL', 'EEE'] as const
 const categories = ['All', 'Seminar', 'Workshop', 'Guest Lecture','Industrial Visit', 'Cultural', 'Sports'] as const
@@ -25,6 +25,23 @@ const StudentSearch = () => {
   const [selectedDepartment, setSelectedDepartment] = useState<(typeof departments)[number]>('All Departments')
   const [selectedCategory, setSelectedCategory] = useState<(typeof categories)[number]>('All')
   const [deptPickerVisible, setDeptPickerVisible] = useState(false)
+  const [allEvents, setAllEvents] = useState<SearchEvent[]>(allEventsInitial)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const data = await mockApi.listSearchEvents()
+        if (mounted) setAllEvents(data)
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const filtered = useMemo(() => {
     return allEvents.filter((e) => {
@@ -106,7 +123,9 @@ const StudentSearch = () => {
       {/* Results */}
       <Text style={[styles.sectionTitle, { marginTop: 18 }]}>Search Results</Text>
       <View style={{ marginTop: 8 }}>
-        {filtered.map((e) => (
+        {loading ? (
+          <Text style={{ color: '#64748b' }}>Loading events...</Text>
+        ) : filtered.map((e) => (
           <Pressable key={e.id} style={styles.resultRow} onPress={() => {
             router.push({ pathname: '../eventDetail', params: { id: e.id } })
           }}>
@@ -122,7 +141,7 @@ const StudentSearch = () => {
             </View>
           </Pressable>
         ))}
-        {filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
           <Text style={{ color: '#64748b', marginTop: 8 }}>No events found.</Text>
         )}
       </View>

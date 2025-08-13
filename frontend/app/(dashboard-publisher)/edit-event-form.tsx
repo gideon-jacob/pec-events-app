@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Alert } from 'react-native'
 import { Link, router, useLocalSearchParams } from 'expo-router'
 import type { EventItem } from '../data/events'
-import { getEventById } from '../data/events'
+import { mockApi } from '../services/mockApi'
 
 type EventMode = 'Online' | 'Offline' | 'Hybrid'
 type EventType = EventItem['type']
@@ -55,7 +55,7 @@ export default function EditEventForm() {
     const load = async () => {
       try {
         if (!id) return
-        const ev = await getEventById(String(id))
+        const ev = await mockApi.getEventById(String(id))
         if (ev) {
           setForm((prev) => ({
             ...prev,
@@ -130,9 +130,9 @@ export default function EditEventForm() {
     }
     setSubmitting(true)
     try {
-      const payload = { ...form, id }
-      console.log('Would PUT /api/events/:id with payload:', payload)
-      Alert.alert('Ready for API', 'This will call PUT /api/events/:id')
+      const payload = { ...form }
+      await mockApi.updateEvent(String(id), payload as any)
+      Alert.alert('Success', 'Event updated (mock)')
       router.replace('/(dashboard-publisher)/publisherHome')
     } finally {
       setSubmitting(false)

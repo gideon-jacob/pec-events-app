@@ -3,7 +3,8 @@ import { Image, ScrollView, StyleSheet, Text, View, Pressable } from 'react-nati
 import Icon from 'react-native-vector-icons/Ionicons'
 import FontAwesome from 'react-native-vector-icons/FontAwesome5'
 import { router } from 'expo-router'
-import { homeEvents, type EventItem } from '../data/events'
+import { type EventItem } from '../data/events'
+import { mockApi } from '../services/mockApi'
 
 
 
@@ -29,7 +30,7 @@ const Badge = ({ label, type }: { label: string; type: EventItem['type'] }) => (
   </View>
 )
 
-const EventCard = ({ item }: { item: typeof homeEvents[number] }) => (
+const EventCard = ({ item }: { item: EventItem }) => (
   <Pressable style={styles.card} onPress={() => {
     router.push({ pathname: '../eventDetail', params: { id: item.id } })
   }}>
@@ -54,14 +55,36 @@ const EventCard = ({ item }: { item: typeof homeEvents[number] }) => (
 )
 
 const StudentHome = () => {
+  const [events, setEvents] = React.useState<EventItem[]>([])
+  const [loading, setLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    let isMounted = true
+    ;(async () => {
+      try {
+        const data = await mockApi.listHomeEvents()
+        if (isMounted) setEvents(data)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    })()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Home</Text>
       </View>
-      {homeEvents.map((e) => (
+      {loading ? (
+        <Text style={{ color: '#64748b', marginTop: 8 }}>Loading events...</Text>
+      ) : (
+        events.map((e) => (
         <EventCard key={e.id} item={e} />
-      ))}
+        ))
+      )}
     </ScrollView>
   )
 }

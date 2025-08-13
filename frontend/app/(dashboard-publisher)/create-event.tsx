@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Alert } from 'react-native'
 import { Link, router } from 'expo-router'
+import { mockApi } from '../services/mockApi'
 
 type EventMode = 'Online' | 'Offline' | 'Hybrid'
 type EventType = 'Workshop' | 'Seminar' | 'Guest Lecture' | 'Industrial Visit' | 'Cultural' | 'Sports'
@@ -92,9 +93,9 @@ export default function CreateEvent() {
     setSubmitting(true)
     try {
       const payload = { ...form }
-      console.log('Would POST /api/events with payload:', payload)
-      Alert.alert('Ready for API', 'This will call POST /api/events')
-      router.replace('/publisherHome')
+      await mockApi.createEvent(payload as any)
+      Alert.alert('Success', 'Event created (mock)')
+      router.replace('/(dashboard-publisher)/publisherHome')
     } finally {
       setSubmitting(false)
     }

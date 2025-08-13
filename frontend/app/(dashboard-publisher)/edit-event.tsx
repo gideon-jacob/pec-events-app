@@ -10,7 +10,8 @@ import {
 import { router, useLocalSearchParams } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useEffect, useMemo, useState } from 'react'
-import { getEventById, EventItem, SearchEvent } from '../data/events'
+import { EventItem, SearchEvent } from '../data/events'
+import { mockApi } from '../services/mockApi'
 
 const EditEvent = () => {
   const params = useLocalSearchParams<{ id?: string }>()
@@ -21,7 +22,7 @@ const EditEvent = () => {
     const load = async () => {
       try {
         if (params.id) {
-          const ev = await getEventById(params.id)
+          const ev = await mockApi.getEventById(params.id)
           setFetched(ev)
         }
       } finally {
