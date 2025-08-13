@@ -26,10 +26,20 @@ const PublisherDashBoardLayout = () => {
       <Tabs.Screen
         name="publisherHome"
         options={{
-          title: 'Home',
-          headerTitle: 'Publisher Dashboard',
+          title: 'Events',
+          headerTitle: 'Events',
           tabBarIcon: ({ color, size, focused }) => (
-            <Icon name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+            <Icon name={focused ? 'search' : 'search-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="create-event"
+        options={{
+          title: 'Create',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Icon name={focused ? 'add-circle' : 'add-circle-outline'} size={size} color={color} />
           ),
         }}
       />
@@ -41,6 +51,13 @@ const PublisherDashBoardLayout = () => {
           tabBarIcon: ({ color, size, focused }) => (
             <Icon name={focused ? 'person' : 'person-outline'} size={size} color={color} />
           ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="edit-event"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
