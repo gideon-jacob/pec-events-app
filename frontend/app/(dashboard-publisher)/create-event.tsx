@@ -102,7 +102,7 @@ export default function CreateEvent() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, { marginTop: 20 }]}>
         <Text style={styles.title}>Create Event</Text>
         <Link href="/publisherHome" style={styles.linkBack}>Back</Link>
       </View>
@@ -330,5 +330,7 @@ const styles = StyleSheet.create({
   },
   publishText: { color: '#fff', fontWeight: '900' },
 })
+
+
 
 

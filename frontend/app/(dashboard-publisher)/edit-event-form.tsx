@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Alert, Image } from 'react-native'
-import { Link, useLocalSearchParams, router } from 'expo-router'
+import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Alert } from 'react-native'
+import { Link, router, useLocalSearchParams } from 'expo-router'
+import type { EventItem } from '../data/events'
+import { getEventById } from '../data/events'
 
 type EventMode = 'Online' | 'Offline' | 'Hybrid'
-type EventType = 'Workshop' | 'Seminar' | 'Guest Lecture' | 'Industrial Visit' | 'Cultural' | 'Sports'
+type EventType = EventItem['type']
 
 type Organizer = { parentOrganization: string; eventOrganizer: string }
 type Contact = { name: string; role: string; phone: string }
@@ -13,7 +15,7 @@ type EventForm = {
   description: string
   imageUrl: string
   eligibility: string
-  date: string
+  date: string // dd-mm-yyyy
   startTime: string
   endTime: string
   mode: EventMode | ''
@@ -28,100 +30,129 @@ type EventForm = {
 const EVENT_TYPES: EventType[] = ['Workshop', 'Seminar', 'Guest Lecture', 'Industrial Visit', 'Cultural', 'Sports']
 const MODES: EventMode[] = ['Online', 'Offline', 'Hybrid']
 
-export default function EditEvent() {
-  const { id } = useLocalSearchParams<{ id: string }>()
-  const [form, setForm] = useState<EventForm | null>(null)
-  const [saving, setSaving] = useState(false)
+export default function EditEventForm() {
+  const { id } = useLocalSearchParams<{ id?: string }>()
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState<EventForm>({
+    title: '',
+    description: '',
+    imageUrl: '',
+    eligibility: '',
+    date: '',
+    startTime: '',
+    endTime: '',
+    mode: '',
+    venue: '',
+    fee: '',
+    organizers: [{ parentOrganization: '', eventOrganizer: '' }],
+    contacts: [{ name: '', role: '', phone: '' }],
+    registrationLink: '',
+    type: 'Workshop',
+  })
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    // Ready for API: replace with GET /api/events/:id
-    // const data = await fetchEventById(id)
-    // setForm(mapper(data))
-    setForm({
-      title: 'College Fest 2024',
-      description:
-        'An annual inter-college festival featuring cultural events, competitions, and workshops. Open to all college students.',
-      imageUrl: 'https://images.unsplash.com/photo-1469173479606-ada03df615ac?w=600&auto=format&fit=crop',
-      eligibility: 'Open to all college students',
-      date: '20-07-2024',
-      startTime: '10:00 AM',
-      endTime: '06:00 PM',
-      mode: 'Offline',
-      venue: 'College Auditorium, 123 University Ave,',
-      fee: '500',
-      organizers: [
-        { parentOrganization: 'College Name', eventOrganizer: 'Student Council' },
-        { parentOrganization: 'Department of Computer Science', eventOrganizer: 'Tech Club' },
-      ],
-      contacts: [
-        { name: 'Aarav Sharma', role: 'Event Coordinator', phone: '+91 9876543210' },
-        { name: 'Diya Patel', role: 'Logistics Head', phone: '+91 8765432109' },
-        { name: 'Rohan Mehta', role: 'Sponsorship Lead', phone: '+91 7654321098' },
-      ],
-      registrationLink: 'https://www.collegefest.com/register',
-      type: 'Cultural',
-    })
+    const load = async () => {
+      try {
+        if (!id) return
+        const ev = await getEventById(String(id))
+        if (ev) {
+          setForm((prev) => ({
+            ...prev,
+            title: ev.title || prev.title,
+            description: ev.description || prev.description,
+            imageUrl: (ev as any)?.image?.uri || prev.imageUrl,
+            eligibility: (ev as any)?.eligibility || prev.eligibility,
+            date: (ev as any)?.date || prev.date,
+            startTime: (ev as any)?.time || prev.startTime,
+            endTime: '',
+            mode: '',
+            venue: (ev as any)?.venue || prev.venue,
+            fee: (ev as any)?.fee || prev.fee,
+            organizers:
+              (ev as any)?.organizers?.map((o: any) => ({ parentOrganization: o.subtitle || '', eventOrganizer: o.name || '' })) ||
+              prev.organizers,
+            contacts:
+              (ev as any)?.contacts?.map((c: any) => ({ name: c.name || '', role: c.role || '', phone: c.phone || '' })) ||
+              prev.contacts,
+            registrationLink: (ev as any)?.registrationLink || prev.registrationLink,
+            type: ((ev as any)?.type || (ev as any)?.category || prev.type) as EventType,
+          }))
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [id])
 
-  const onChange = <K extends keyof EventForm>(key: K, value: EventForm[K]) => setForm((prev) => (prev ? { ...prev, [key]: value } : prev))
+  const onChange = <K extends keyof EventForm>(key: K, value: EventForm[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }))
 
-  const isValid = useMemo(() => !!form && form.title.trim() && form.description.trim(), [form])
+  const isValid = useMemo(() => form.title.trim().length > 0 && form.description.trim().length > 0, [form.title, form.description])
 
   function updateOrganizer(index: number, key: keyof Organizer, value: string) {
     setForm((prev) => {
-      if (!prev) return prev
       const next = [...prev.organizers]
       next[index] = { ...next[index], [key]: value }
       return { ...prev, organizers: next }
     })
   }
+
   function addOrganizer() {
-    setForm((prev) => (prev ? { ...prev, organizers: [...prev.organizers, { parentOrganization: '', eventOrganizer: '' }] } : prev))
+    setForm((prev) => ({ ...prev, organizers: [...prev.organizers, { parentOrganization: '', eventOrganizer: '' }] }))
   }
+
   function removeOrganizer(index: number) {
-    setForm((prev) => (prev ? { ...prev, organizers: prev.organizers.filter((_, i) => i !== index) } : prev))
+    setForm((prev) => ({ ...prev, organizers: prev.organizers.filter((_, i) => i !== index) }))
   }
 
   function updateContact(index: number, key: keyof Contact, value: string) {
     setForm((prev) => {
-      if (!prev) return prev
       const next = [...prev.contacts]
       next[index] = { ...next[index], [key]: value }
       return { ...prev, contacts: next }
     })
   }
+
   function addContact() {
-    setForm((prev) => (prev ? { ...prev, contacts: [...prev.contacts, { name: '', role: '', phone: '' }] } : prev))
-  }
-  function removeContact(index: number) {
-    setForm((prev) => (prev ? { ...prev, contacts: prev.contacts.filter((_, i) => i !== index) } : prev))
+    setForm((prev) => ({ ...prev, contacts: [...prev.contacts, { name: '', role: '', phone: '' }] }))
   }
 
-  async function onSave() {
-    if (!form || !isValid) {
+  function removeContact(index: number) {
+    setForm((prev) => ({ ...prev, contacts: prev.contacts.filter((_, i) => i !== index) }))
+  }
+
+  async function onSubmit() {
+    if (!isValid) {
       Alert.alert('Missing fields', 'Please fill the required fields (Title, Description)')
       return
     }
-    setSaving(true)
+    setSubmitting(true)
     try {
-      const payload = { ...form }
-      // Ready for API: replace with PUT /api/events/:id
-      // await updateEvent(id, payload)
-      console.log('Would PUT /api/events/' + id, payload)
-      Alert.alert('Ready for API', `This will call PUT /api/events/${id}`)
-      router.replace('/publisherHome')
+      const payload = { ...form, id }
+      console.log('Would PUT /api/events/:id with payload:', payload)
+      Alert.alert('Ready for API', 'This will call PUT /api/events/:id')
+      router.replace('/(dashboard-publisher)/publisherHome')
     } finally {
-      setSaving(false)
+      setSubmitting(false)
     }
   }
 
-  if (!form) return <View style={styles.container}><Text>Loading...</Text></View>
+  if (loading) {
+    return (
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Edit Event</Text>
+        <Text style={{ color: '#64748b' }}>Loading...</Text>
+      </ScrollView>
+    )
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Edit Event</Text>
-        <Link href="/publisherHome" style={styles.linkBack}>Back</Link>
+        <Text style={[styles.title, { marginTop: 20}]}>Edit Event</Text>
+        <Link href="/(dashboard-publisher)/publisherHome" style={[styles.linkBack, { marginTop: 20}]}>Back</Link>
       </View>
 
       {/* Event Title */}
@@ -138,14 +169,13 @@ export default function EditEvent() {
         onChangeText={(t) => onChange('description', t)}
       />
 
-      {/* Event Thumbnail */}
+      {/* Event Thumbnail (URL placeholder) */}
       <Label text="Event Thumbnail" />
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        {!!form.imageUrl && <Image source={{ uri: form.imageUrl }} style={styles.thumb} />}
-        <Pressable style={styles.smallBtn} onPress={() => Alert.alert('Image', 'Replace with image picker')}>
-          <Text style={styles.smallBtnText}>Change</Text>
-        </Pressable>
+      <View style={styles.uploadCard}>
+        <Text style={styles.uploadTitle}>Upload a file</Text>
+        <Text style={styles.uploadSub}>PNG, JPG, GIF up to 10MB</Text>
       </View>
+      <TextInput placeholder="Or paste image URL" style={styles.input} value={form.imageUrl} onChangeText={(t) => onChange('imageUrl', t)} />
 
       {/* Eligibility */}
       <Label text="Eligibility" />
@@ -258,8 +288,8 @@ export default function EditEvent() {
       <TextInput placeholder="Enter registration link" style={styles.input} value={form.registrationLink} onChangeText={(t) => onChange('registrationLink', t)} />
 
       {/* Save CTA */}
-      <Pressable disabled={saving || !isValid} onPress={onSave} style={[styles.saveBtn, (saving || !isValid) && { opacity: 0.6 }]}>
-        <Text style={styles.saveText}>Save Changes</Text>
+      <Pressable disabled={submitting || !isValid} onPress={onSubmit} style={[styles.publishBtn, (submitting || !isValid) && { opacity: 0.6 }]}>
+        <Text style={styles.publishText}>Save Changes</Text>
       </Pressable>
     </ScrollView>
   )
@@ -271,15 +301,31 @@ function Label({ text }: { text: string }) {
 
 const styles = StyleSheet.create({
   container: { padding: 16, backgroundColor: '#fff' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginTop: 15 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   title: { fontSize: 20, fontWeight: '900', color: '#991b1b' },
   linkBack: { color: '#0ea5e9', fontWeight: '700' },
+
   label: { marginTop: 12, marginBottom: 6, color: '#334155', fontWeight: '700' },
-  subtle: { color: '#64748b' },
-  input: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, backgroundColor: '#fff' },
+  input: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    padding: 12,
+    backgroundColor: '#fff',
+  },
   textarea: { height: 120, textAlignVertical: 'top' },
 
-  thumb: { width: 64, height: 64, borderRadius: 8, backgroundColor: '#e2e8f0' },
+  uploadCard: {
+    height: 140,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadTitle: { color: '#9e0202', fontWeight: '800' },
+  uploadSub: { color: '#64748b', marginTop: 6 },
 
   row2: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 6 },
 
@@ -318,10 +364,7 @@ const styles = StyleSheet.create({
   typePillText: { color: '#334155' },
   typePillTextActive: { color: '#991b1b', fontWeight: '800' },
 
-  smallBtn: { borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: '#fff' },
-  smallBtnText: { color: '#0f172a', fontWeight: '800' },
-
-  saveBtn: {
+  publishBtn: {
     marginTop: 16,
     backgroundColor: '#9e0202',
     borderRadius: 12,
@@ -333,7 +376,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  saveText: { color: '#fff', fontWeight: '900' },
+  publishText: { color: '#fff', fontWeight: '900' },
 })
 
 

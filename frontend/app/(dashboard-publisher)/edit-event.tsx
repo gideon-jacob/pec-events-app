@@ -7,55 +7,67 @@ import {
   TouchableOpacity,
   Linking,
 } from 'react-native'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
+import { useEffect, useMemo, useState } from 'react'
+import { getEventById, EventItem, SearchEvent } from '../data/events'
 
 const EditEvent = () => {
-  const eventData = {
-    title: 'Getting Started with Digital Marketing',
-    bannerTitle: 'Digital Marketing Seminar',
-    description: 'Join us for an insightful seminar on the fundamentals of digital marketing. This event will cover key strategies and tools to help you succeed in the online world. Whether you\'re a student or an aspiring marketer, this seminar is for you.',
-    dateTime: 'July 20, 2024, 10:00 AM - 1:00 PM',
-    venue: 'College Auditorium (Offline)',
-    eligibility: 'Open to all students',
-    eventType: 'Seminar',
-    entryFee: 'Free',
-    registrationLink: 'http://localhost:5500/publisher-event-details.html',
-    organizers: [
-      {
-        name: 'Prathyusha Engineering College',
-        subtitle: 'Department of Computer Science',
-        icon: 'business'
-      },
-      {
-        name: 'Entrepreneurship Cell',
-        subtitle: 'In association with IIC',
-        icon: 'people'
+  const params = useLocalSearchParams<{ id?: string }>()
+  const [fetched, setFetched] = useState<(EventItem | SearchEvent) | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        if (params.id) {
+          const ev = await getEventById(params.id)
+          setFetched(ev)
+        }
+      } finally {
+        setLoading(false)
       }
-    ],
-    creator: {
-      name: 'Thamba Meshaw W',
-      subtitle: 'Department of Computer Science',
-      icon: 'person'
-    },
-    contacts: [
-      {
-        name: 'Rohan Sharma',
-        role: 'Student Coordinator',
-        phone: '+91 98765 43210',
-        icon: 'person'
-      },
-      {
-        name: 'Priya Singh',
-        role: 'Faculty Coordinator',
-        phone: '+91 98765 43211',
-        icon: 'person'
-      }
-    ]
-  }
+    }
+    load()
+  }, [params.id])
+
+  // Derived, with sensible fallbacks so UI remains intact
+  const eventData = useMemo(() => {
+    const title = fetched?.title ?? 'Getting Started with Digital Marketing'
+    const description = fetched?.description ?? 'Join us for an insightful seminar on the fundamentals of digital marketing. This event will cover key strategies and tools to help you succeed in the online world.'
+    const date = (fetched as any)?.date ?? 'July 20, 2024'
+    const time = (fetched as any)?.time ?? '10:00 AM - 1:00 PM'
+    const dateTime = `${date}${time ? `, ${time}` : ''}`
+    const eventType = (fetched as any)?.type ?? (fetched as any)?.category ?? 'Seminar'
+    const venue = (fetched as any)?.venue ?? 'College Auditorium (Offline)'
+    const eligibility = (fetched as any)?.eligibility ?? 'Open to all students'
+    const entryFee = (fetched as any)?.fee ?? 'Free'
+
+    return {
+      title,
+      bannerTitle: title,
+      description,
+      dateTime,
+      venue,
+      eligibility,
+      eventType,
+      entryFee,
+      registrationLink: (fetched as any)?.registrationLink ?? 'https://example.com/register',
+      organizers: (fetched as any)?.organizers ?? [
+        { name: 'Prathyusha Engineering College', subtitle: 'Department of Computer Science', icon: 'business' },
+        { name: 'Entrepreneurship Cell', subtitle: 'In association with IIC', icon: 'people' },
+      ],
+      creator: (fetched as any)?.creator ?? { name: 'Publisher User', subtitle: 'Department of Computer Science', icon: 'person' },
+      contacts: (fetched as any)?.contacts ?? [
+        { name: 'Rohan Sharma', role: 'Student Coordinator', phone: '+91 98765 43210', icon: 'person' },
+        { name: 'Priya Singh', role: 'Faculty Coordinator', phone: '+91 98765 43211', icon: 'person' },
+      ],
+    }
+  }, [fetched])
 
   const handleEditEvent = () => {
-    router.push('/(dashboard-publisher)/create-event')
+    const id = (params.id as string) || (fetched as any)?.id || ''
+    router.push({ pathname: '/(dashboard-publisher)/edit-event-form', params: { id } })
   }
 
   const handleCall = (phone: string) => {
@@ -70,17 +82,26 @@ const EditEvent = () => {
     Linking.openURL(eventData.registrationLink)
   }
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.push('/(dashboard-publisher)/publisherHome')}>
+              <Icon name="arrow-back" size={24} color="#1e293b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Event Details</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <Text style={{ padding: 16, color: '#64748b' }}>Loading...</Text>
+        </ScrollView>
+      </View>
+    )
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.push('/(dashboard-publisher)/publisherHome')}>
-            <Icon name="arrow-back" size={24} color="#1e293b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Event Details</Text>
-          <View style={{ width: 24 }} />
-        </View>
 
         {/* Event Banner */}
         <View style={styles.banner}>
@@ -111,7 +132,7 @@ const EditEvent = () => {
 
         {/* Organizers */}
         <Section title="Organizers">
-          {eventData.organizers.map((organizer, index) => (
+          {eventData.organizers.map((organizer: { name: string; subtitle: string; icon: string }, index: number) => (
             <ContactItem
               key={index}
               name={organizer.name}
@@ -132,7 +153,7 @@ const EditEvent = () => {
 
         {/* Point of Contact */}
         <Section title="Point of Contact">
-          {eventData.contacts.map((contact, index) => (
+          {eventData.contacts.map((contact: { name: string; role: string; phone: string; icon: string }, index: number) => (
             <View key={index} style={styles.contactContainer}>
               <ContactItem
                 name={contact.name}

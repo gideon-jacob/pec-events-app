@@ -1,5 +1,5 @@
 import React from 'react'
-import { Redirect, Tabs } from 'expo-router'
+import { Redirect, Tabs, router } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -38,6 +38,7 @@ const PublisherDashBoardLayout = () => {
         name="create-event"
         options={{
           title: 'Create',
+          headerShown: false,
           tabBarIcon: ({ color, size, focused }) => (
             <Icon name={focused ? 'add-circle' : 'add-circle-outline'} size={size} color={color} />
           ),
@@ -57,6 +58,24 @@ const PublisherDashBoardLayout = () => {
       <Tabs.Screen
         name="edit-event"
         options={{
+          title: 'Event Details',
+          headerLeft: () => (
+            <Icon
+              name="chevron-back"
+              size={22}
+              color="#0f172a"
+              style={{ marginLeft: 12 }}
+              onPress={() => router.push('/(dashboard-publisher)/publisherHome')}
+            />
+          ),
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="edit-event-form"
+        options={{
+          headerShown: false,
           href: null,
         }}
       />

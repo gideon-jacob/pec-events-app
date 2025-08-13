@@ -53,7 +53,7 @@ const PublisherHome = () => {
   }, [searchQuery, selectedDepartment, selectedCategory, events])
 
   const handleEventPress = (eventId: string) => {
-    router.push('/(dashboard-publisher)/edit-event')
+    router.push({ pathname: '/(dashboard-publisher)/edit-event', params: { id: eventId } })
   }
 
   if (loading) {
