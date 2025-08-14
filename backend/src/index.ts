@@ -7,6 +7,7 @@ import serverlessHttp from "serverless-http";
 import studentRouter from "./routes/student";
 import publisherRouter from "./routes/publisher";
 import authRouter from "./routes/auth";
+import { authenticateToken, authorizeRoles } from "./middleware/auth.middleware";
 
 // Load environment variables from example first, then override with actual .env
 if (process.env.NODE_ENV !== 'production') {
@@ -79,7 +80,7 @@ if (process.env.NODE_ENV !== "production") {
 // Load all the API routes
 app.use(express.json());
 app.use("/api/student", studentRouter);
-app.use("/api/publisher", publisherRouter);
+app.use("/api/publisher", authenticateToken, authorizeRoles(['publisher']), publisherRouter);
 app.use("/api", authRouter);
 
 // Start server
