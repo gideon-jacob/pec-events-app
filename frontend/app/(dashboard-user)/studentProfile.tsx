@@ -28,8 +28,7 @@ const StudentProfile = () => {
     return <Redirect href="/login" />
   }
   
-  const username = state.user.registerNumber || state.user.name || 'Student'
-
+  const username = state.user?.registerNumber || state.user?.name || 'Student'
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Profile</Text>
@@ -51,12 +50,12 @@ const StudentProfile = () => {
         <View style={styles.divider} />
 
         <Text style={styles.label}>Email</Text>
-        <Text style={styles.value}>asta-staria@gmail.com</Text>
+        <Text style={styles.value}>{state.user?.email || '—'}</Text>
 
         <View style={styles.divider} />
 
         <Text style={styles.label}>Department</Text>
-        <Text style={styles.value}>Computer Science and Engineering</Text>
+        <Text style={styles.value}>{state.user?.department || '—'}</Text>
       </View>
 
       {/* Actions */}

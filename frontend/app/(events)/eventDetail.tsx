@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { ScrollView, StyleSheet, Text, View, Image, Pressable, ActivityIndicator, Linking } from 'react-native'
+import { ScrollView, StyleSheet, Text, View, Image, Pressable, ActivityIndicator, Linking, Alert } from 'react-native'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useLocalSearchParams } from 'expo-router'
-import { type EventItem, type SearchEvent } from '../data/events'
+import { type EventItem, type SearchEvent, getEventById } from '../data/events'
 import { mockApi } from '../services/mockApi'
 
 type Params = {
@@ -40,12 +40,15 @@ export default function EventDetail() {
     ;(async () => {
       try {
         if (!params.id) return
-        const data = await mockApi.getEventById(params.id)
+        const data = await getEventById(params.id)
         if (isMounted) setEvent(data)
+      } catch (error) {
+        console.error('Failed to fetch event:', error)
+        // Consider setting an error state to display to the user
       } finally {
         if (isMounted) setLoading(false)
       }
-    })()
+    })();
     return () => {
       isMounted = false
     }
@@ -129,10 +132,51 @@ export default function EventDetail() {
               </View>
             </View>
             <View style={styles.pocActions}>
-              <Pressable style={styles.circleBtn} onPress={() => Linking.openURL(`tel:${c.phone}`)}>
+              <Pressable
+                style={styles.circleBtn}
+                onPress={async () => {
+                  const url = `tel:${c.phone}`
+                  try {
+                    const canOpen = await Linking.canOpenURL(url)
+                    if (canOpen) {
+                      await Linking.openURL(url)
+                    } else {
+                      Alert.alert('Cannot place call', 'Your device cannot handle phone calls for this number.')
+                      console.warn('Linking.canOpenURL returned false for', url)
+                    }
+                  } catch (error) {
+                    console.error('Failed to open phone URL', url, error)
+                    Alert.alert('Call failed', 'Unable to open the dialer. Please try again later.')
+                  }
+                }}
+              >
                 <Icon name="call" size={16} color="#0f172a" />
               </Pressable>
-              <Pressable style={[styles.circleBtn, styles.circleBtnGreen]} onPress={() => Linking.openURL(`whatsapp://send?phone=${c.phone.replace(/\s/g, '')}`)}>
+              <Pressable
+                style={[styles.circleBtn, styles.circleBtnGreen]}
+                onPress={async () => {
+                  const phone = c.phone.replace(/\s/g, '')
+                  const appUrl = `whatsapp://send?phone=${phone}`
+                  const webUrl = `https://wa.me/${phone}`
+                  try {
+                    const canOpenApp = await Linking.canOpenURL(appUrl)
+                    if (canOpenApp) {
+                      await Linking.openURL(appUrl)
+                      return
+                    }
+                    const canOpenWeb = await Linking.canOpenURL(webUrl)
+                    if (canOpenWeb) {
+                      await Linking.openURL(webUrl)
+                      return
+                    }
+                    Alert.alert('WhatsApp not available', 'WhatsApp is not installed, and the web link could not be opened.')
+                    console.warn('Neither WhatsApp app nor web link could be opened:', { appUrl, webUrl })
+                  } catch (error) {
+                    console.error('Failed to open WhatsApp URL', { appUrl, webUrl }, error)
+                    Alert.alert('Unable to open WhatsApp', 'Something went wrong while trying to open WhatsApp.')
+                  }
+                }}
+              >
                 <Icon name="logo-whatsapp" size={16} color="#16a34a" />
               </Pressable>
             </View>
@@ -150,8 +194,56 @@ export default function EventDetail() {
               </View>
             </View>
             <View style={styles.pocActions}>
-              <View style={styles.circleBtn}><Icon name="call" size={16} color="#0f172a" /></View>
-              <View style={[styles.circleBtn, styles.circleBtnGreen]}><Icon name="logo-whatsapp" size={16} color="#16a34a" /></View>
+              <Pressable
+                style={styles.circleBtn}
+                onPress={async () => {
+                  const phoneRaw = '+91 98765 43210'
+                  const phone = phoneRaw.replace(/\s/g, '')
+                  const url = `tel:${phone}`
+                  try {
+                    const canOpen = await Linking.canOpenURL(url)
+                    if (canOpen) {
+                      await Linking.openURL(url)
+                    } else {
+                      Alert.alert('Cannot place call', 'Your device cannot handle phone calls for this number.')
+                      console.warn('Linking.canOpenURL returned false for', url)
+                    }
+                  } catch (error) {
+                    console.error('Failed to open phone URL', url, error)
+                    Alert.alert('Call failed', 'Unable to open the dialer. Please try again later.')
+                  }
+                }}
+              >
+                <Icon name="call" size={16} color="#0f172a" />
+              </Pressable>
+              <Pressable
+                style={[styles.circleBtn, styles.circleBtnGreen]}
+                onPress={async () => {
+                  const phoneRaw = '+91 98765 43210'
+                  const phone = phoneRaw.replace(/\s/g, '')
+                  const appUrl = `whatsapp://send?phone=${phone}`
+                  const webUrl = `https://wa.me/${phone}`
+                  try {
+                    const canOpenApp = await Linking.canOpenURL(appUrl)
+                    if (canOpenApp) {
+                      await Linking.openURL(appUrl)
+                      return
+                    }
+                    const canOpenWeb = await Linking.canOpenURL(webUrl)
+                    if (canOpenWeb) {
+                      await Linking.openURL(webUrl)
+                      return
+                    }
+                    Alert.alert('WhatsApp not available', 'WhatsApp is not installed, and the web link could not be opened.')
+                    console.warn('Neither WhatsApp app nor web link could be opened:', { appUrl, webUrl })
+                  } catch (error) {
+                    console.error('Failed to open WhatsApp URL', { appUrl, webUrl }, error)
+                    Alert.alert('Unable to open WhatsApp', 'Something went wrong while trying to open WhatsApp.')
+                  }
+                }}
+              >
+                <Icon name="logo-whatsapp" size={16} color="#16a34a" />
+              </Pressable>
             </View>
           </View>
           <View style={styles.pocCard}>
@@ -164,8 +256,56 @@ export default function EventDetail() {
               </View>
             </View>
             <View style={styles.pocActions}>
-              <View style={styles.circleBtn}><Icon name="call" size={16} color="#0f172a" /></View>
-              <View style={[styles.circleBtn, styles.circleBtnGreen]}><Icon name="logo-whatsapp" size={16} color="#16a34a" /></View>
+              <Pressable
+                style={styles.circleBtn}
+                onPress={async () => {
+                  const phoneRaw = '+91 98765 43211'
+                  const phone = phoneRaw.replace(/\s/g, '')
+                  const url = `tel:${phone}`
+                  try {
+                    const canOpen = await Linking.canOpenURL(url)
+                    if (canOpen) {
+                      await Linking.openURL(url)
+                    } else {
+                      Alert.alert('Cannot place call', 'Your device cannot handle phone calls for this number.')
+                      console.warn('Linking.canOpenURL returned false for', url)
+                    }
+                  } catch (error) {
+                    console.error('Failed to open phone URL', url, error)
+                    Alert.alert('Call failed', 'Unable to open the dialer. Please try again later.')
+                  }
+                }}
+              >
+                <Icon name="call" size={16} color="#0f172a" />
+              </Pressable>
+              <Pressable
+                style={[styles.circleBtn, styles.circleBtnGreen]}
+                onPress={async () => {
+                  const phoneRaw = '+91 98765 43211'
+                  const phone = phoneRaw.replace(/\s/g, '')
+                  const appUrl = `whatsapp://send?phone=${phone}`
+                  const webUrl = `https://wa.me/${phone}`
+                  try {
+                    const canOpenApp = await Linking.canOpenURL(appUrl)
+                    if (canOpenApp) {
+                      await Linking.openURL(appUrl)
+                      return
+                    }
+                    const canOpenWeb = await Linking.canOpenURL(webUrl)
+                    if (canOpenWeb) {
+                      await Linking.openURL(webUrl)
+                      return
+                    }
+                    Alert.alert('WhatsApp not available', 'WhatsApp is not installed, and the web link could not be opened.')
+                    console.warn('Neither WhatsApp app nor web link could be opened:', { appUrl, webUrl })
+                  } catch (error) {
+                    console.error('Failed to open WhatsApp URL', { appUrl, webUrl }, error)
+                    Alert.alert('Unable to open WhatsApp', 'Something went wrong while trying to open WhatsApp.')
+                  }
+                }}
+              >
+                <Icon name="logo-whatsapp" size={16} color="#16a34a" />
+              </Pressable>
             </View>
           </View>
         </>

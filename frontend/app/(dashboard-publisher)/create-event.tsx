@@ -28,6 +28,7 @@ type EventForm = {
 
 const EVENT_TYPES: EventType[] = ['Workshop', 'Seminar', 'Guest Lecture', 'Industrial Visit', 'Cultural', 'Sports']
 const MODES: EventMode[] = ['Online', 'Offline', 'Hybrid']
+const PUBLISHER_HOME_PATH = '/(dashboard-publisher)/publisherHome'
 
 export default function CreateEvent() {
   const [form, setForm] = useState<EventForm>({
@@ -51,7 +52,15 @@ export default function CreateEvent() {
   const onChange = <K extends keyof EventForm>(key: K, value: EventForm[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }))
 
-  const isValid = useMemo(() => form.title.trim().length > 0 && form.description.trim().length > 0, [form.title, form.description])
+  const isValid = useMemo(() => {
+    const hasRequiredFields = form.title.trim().length > 0 && form.description.trim().length > 0;
+    const hasValidDate = form.date.trim().length > 0;
+    const hasValidTimes = form.startTime.trim().length > 0 && form.endTime.trim().length > 0;
+    const hasValidContacts = form.contacts.some(contact =>
+      contact.name.trim().length > 0 && contact.phone.trim().length > 0
+    );
+    return hasRequiredFields && hasValidDate && hasValidTimes && hasValidContacts;
+  }, [form.title, form.description, form.date, form.startTime, form.endTime, form.contacts])
 
   function updateOrganizer(index: number, key: keyof Organizer, value: string) {
     setForm((prev) => {
@@ -93,9 +102,9 @@ export default function CreateEvent() {
     setSubmitting(true)
     try {
       const payload = { ...form }
-      await mockApi.createEvent(payload as any)
+      await mockApi.createEvent(payload)
       Alert.alert('Success', 'Event created (mock)')
-      router.replace('/(dashboard-publisher)/publisherHome')
+      router.replace(PUBLISHER_HOME_PATH)
     } finally {
       setSubmitting(false)
     }
@@ -105,7 +114,7 @@ export default function CreateEvent() {
     <ScrollView contentContainerStyle={styles.container}>
       <View style={[styles.headerRow, { marginTop: 20 }]}>
         <Text style={styles.title}>Create Event</Text>
-        <Link href="/publisherHome" style={styles.linkBack}>Back</Link>
+        <Link href={PUBLISHER_HOME_PATH} style={styles.linkBack}>Back</Link>
       </View>
 
       {/* Event Title */}

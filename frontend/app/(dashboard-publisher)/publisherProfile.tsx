@@ -191,7 +191,7 @@ const PublisherProfile = () => {
             <View key={event.id} style={styles.eventCard}>
               <View style={styles.eventImage}>
                 {event.imageUrl ? (
-                  <Image source={{ uri: event.imageUrl }} style={styles.eventImage} />
+                  <Image source={{ uri: event.imageUrl }} style={styles.eventImageInner} resizeMode="cover" />
                 ) : (
                   <View style={styles.imagePlaceholder}>
                     <Icon name="image-outline" size={24} color="#94a3b8" />
@@ -354,6 +354,11 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 8,
     backgroundColor: '#f1f5f9',
+  },
+  eventImageInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
   },
   imagePlaceholder: {
     width: 60,

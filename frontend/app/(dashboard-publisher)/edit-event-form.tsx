@@ -50,6 +50,55 @@ export default function EditEventForm() {
     type: 'Workshop',
   })
   const [submitting, setSubmitting] = useState(false)
+  const [errors, setErrors] = useState<{ date: string; fee: string; contactPhones: string[] }>({
+    date: '',
+    fee: '',
+    contactPhones: [''],
+  })
+
+  // --- Validators ---
+  function sanitizeAndValidateDate(input: string): { sanitized: string; error: string } {
+    const digits = (input || '').replace(/\D/g, '').slice(0, 8)
+    let sanitized = digits
+    if (digits.length > 4) {
+      sanitized = `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`
+    } else if (digits.length > 2) {
+      sanitized = `${digits.slice(0, 2)}-${digits.slice(2)}`
+    }
+
+    if (digits.length === 0) return { sanitized, error: '' }
+    if (digits.length < 8) return { sanitized, error: 'Enter a full date in dd-mm-yyyy' }
+
+    const day = parseInt(digits.slice(0, 2), 10)
+    const month = parseInt(digits.slice(2, 4), 10)
+    const year = parseInt(digits.slice(4), 10)
+    if (month < 1 || month > 12) return { sanitized, error: 'Month must be between 01 and 12' }
+    if (year < 1900 || year > 2100) return { sanitized, error: 'Year must be between 1900 and 2100' }
+    const d = new Date(year, month - 1, day)
+    const isRealDate = d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day
+    return { sanitized, error: isRealDate ? '' : 'Enter a valid calendar date' }
+  }
+
+  function sanitizeAndValidatePhone(input: string): { sanitized: string; error: string } {
+    const hasPlus = (input || '').trim().startsWith('+')
+    const digits = (input || '').replace(/\D/g, '').slice(0, 15)
+    const sanitized = `${hasPlus ? '+' : ''}${digits}`
+    if (digits.length === 0) return { sanitized, error: '' }
+    if (digits.length < 10) return { sanitized, error: 'Enter at least 10 digits' }
+    return { sanitized, error: '' }
+  }
+
+  function sanitizeAndValidateNumber(input: string): { sanitized: string; error: string } {
+    let sanitized = (input || '').replace(/[^0-9.]/g, '')
+    const firstDot = sanitized.indexOf('.')
+    if (firstDot !== -1) {
+      sanitized = sanitized.slice(0, firstDot + 1) + sanitized.slice(firstDot + 1).replace(/\./g, '')
+    }
+    if (sanitized === '.') sanitized = '0.'
+    if (sanitized === '') return { sanitized, error: '' }
+    const valid = /^\d+(\.\d+)?$/.test(sanitized)
+    return { sanitized, error: valid ? '' : 'Enter a valid number' }
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -70,15 +119,25 @@ export default function EditEventForm() {
             venue: (ev as any)?.venue || prev.venue,
             fee: (ev as any)?.fee || prev.fee,
             organizers:
-              (ev as any)?.organizers?.map((o: any) => ({ parentOrganization: o.subtitle || '', eventOrganizer: o.name || '' })) ||
-              prev.organizers,
+              (ev as any)?.organizers?.map((o: any) => ({
+                parentOrganization: o.subtitle || '',
+                eventOrganizer: o.name || '',
+              })) || prev.organizers,
             contacts:
-              (ev as any)?.contacts?.map((c: any) => ({ name: c.name || '', role: c.role || '', phone: c.phone || '' })) ||
-              prev.contacts,
+              (ev as any)?.contacts?.map((c: any) => ({
+                name: c.name || '',
+                role: c.role || '',
+                phone: c.phone || '',
+              })) || prev.contacts,
             registrationLink: (ev as any)?.registrationLink || prev.registrationLink,
             type: ((ev as any)?.type || (ev as any)?.category || prev.type) as EventType,
           }))
+          const contactsLen = (ev as any)?.contacts?.length || 1
+          setErrors((prev) => ({ ...prev, contactPhones: Array.from({ length: contactsLen }, () => '') }))
         }
+      } catch (error) {
+        Alert.alert('Error', 'Failed to load event data. Please try again.')
+        console.error('Failed to load event:', error)
       } finally {
         setLoading(false)
       }
@@ -89,7 +148,12 @@ export default function EditEventForm() {
   const onChange = <K extends keyof EventForm>(key: K, value: EventForm[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }))
 
-  const isValid = useMemo(() => form.title.trim().length > 0 && form.description.trim().length > 0, [form.title, form.description])
+  const hasRequired = useMemo(() => form.title.trim().length > 0 && form.description.trim().length > 0, [form.title, form.description])
+  const hasValidationErrors = useMemo(
+    () => Boolean(errors.date || errors.fee || (errors.contactPhones && errors.contactPhones.some((e) => !!e))),
+    [errors]
+  )
+  const canSubmit = useMemo(() => hasRequired && !hasValidationErrors, [hasRequired, hasValidationErrors])
 
   function updateOrganizer(index: number, key: keyof Organizer, value: string) {
     setForm((prev) => {
@@ -117,15 +181,24 @@ export default function EditEventForm() {
 
   function addContact() {
     setForm((prev) => ({ ...prev, contacts: [...prev.contacts, { name: '', role: '', phone: '' }] }))
+    setErrors((prev) => ({ ...prev, contactPhones: [...(prev.contactPhones || []), ''] }))
   }
 
   function removeContact(index: number) {
     setForm((prev) => ({ ...prev, contacts: prev.contacts.filter((_, i) => i !== index) }))
+    setErrors((prev) => ({
+      ...prev,
+      contactPhones: (prev.contactPhones || []).filter((_, i) => i !== index),
+    }))
   }
 
   async function onSubmit() {
-    if (!isValid) {
+    if (!hasRequired) {
       Alert.alert('Missing fields', 'Please fill the required fields (Title, Description)')
+      return
+    }
+    if (hasValidationErrors) {
+      Alert.alert('Invalid fields', 'Please fix the highlighted fields before submitting.')
       return
     }
     setSubmitting(true)
@@ -134,6 +207,9 @@ export default function EditEventForm() {
       await mockApi.updateEvent(String(id), payload as any)
       Alert.alert('Success', 'Event updated (mock)')
       router.replace('/(dashboard-publisher)/publisherHome')
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update event. Please try again.')
+      console.error('Failed to update event:', error)
     } finally {
       setSubmitting(false)
     }
@@ -183,7 +259,17 @@ export default function EditEventForm() {
 
       {/* Date */}
       <Label text="Date" />
-      <TextInput placeholder="dd-mm-yyyy" style={styles.input} value={form.date} onChangeText={(t) => onChange('date', t)} />
+      <TextInput
+        placeholder="dd-mm-yyyy"
+        style={styles.input}
+        value={form.date}
+        onChangeText={(t) => {
+          const { sanitized, error } = sanitizeAndValidateDate(t)
+          onChange('date', sanitized)
+          setErrors((prev) => ({ ...prev, date: error }))
+        }}
+      />
+      {!!errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
 
       {/* Times */}
       <View style={styles.row2}>
@@ -225,7 +311,18 @@ export default function EditEventForm() {
 
       {/* Entry Fee */}
       <Label text="Entry Fee (in ₹)" />
-      <TextInput placeholder="Enter amount or 0 for free entry" keyboardType="numeric" style={styles.input} value={form.fee} onChangeText={(t) => onChange('fee', t)} />
+      <TextInput
+        placeholder="Enter amount or 0 for free entry"
+        keyboardType="numeric"
+        style={styles.input}
+        value={form.fee}
+        onChangeText={(t) => {
+          const { sanitized, error } = sanitizeAndValidateNumber(t)
+          onChange('fee', sanitized)
+          setErrors((prev) => ({ ...prev, fee: error }))
+        }}
+      />
+      {!!errors.fee && <Text style={styles.errorText}>{errors.fee}</Text>}
 
       {/* Organizers */}
       <Label text="Organizers" />
@@ -276,7 +373,24 @@ export default function EditEventForm() {
           <Label text="Role" />
           <TextInput placeholder="e.g., Event Coordinator" style={styles.input} value={c.role} onChangeText={(t) => updateContact(idx, 'role', t)} />
           <Label text="Contact Number" />
-          <TextInput placeholder="Enter contact number" keyboardType="phone-pad" style={styles.input} value={c.phone} onChangeText={(t) => updateContact(idx, 'phone', t)} />
+          <TextInput
+            placeholder="Enter contact number"
+            keyboardType="phone-pad"
+            style={styles.input}
+            value={c.phone}
+            onChangeText={(t) => {
+              const { sanitized, error } = sanitizeAndValidatePhone(t)
+              updateContact(idx, 'phone', sanitized)
+              setErrors((prev) => {
+                const next = [...(prev.contactPhones || [])]
+                next[idx] = error
+                return { ...prev, contactPhones: next }
+              })
+            }}
+          />
+          {!!(errors.contactPhones && errors.contactPhones[idx]) && (
+            <Text style={styles.errorText}>{errors.contactPhones[idx]}</Text>
+          )}
         </View>
       ))}
       <Pressable style={styles.addBtn} onPress={addContact}>
@@ -288,7 +402,7 @@ export default function EditEventForm() {
       <TextInput placeholder="Enter registration link" style={styles.input} value={form.registrationLink} onChangeText={(t) => onChange('registrationLink', t)} />
 
       {/* Save CTA */}
-      <Pressable disabled={submitting || !isValid} onPress={onSubmit} style={[styles.publishBtn, (submitting || !isValid) && { opacity: 0.6 }]}>
+      <Pressable disabled={submitting || !canSubmit} onPress={onSubmit} style={[styles.publishBtn, (submitting || !canSubmit) && { opacity: 0.6 }]}>
         <Text style={styles.publishText}>Save Changes</Text>
       </Pressable>
     </ScrollView>
@@ -377,6 +491,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   publishText: { color: '#fff', fontWeight: '900' },
+  errorText: { color: '#b91c1c', marginTop: 6 },
 })
 
 

@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native'
 import React, { useState } from 'react'
 import Icon from 'react-native-vector-icons/Ionicons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome5'
@@ -17,18 +17,69 @@ const Login = () => {
   const [registerNumber, setRegisterNumber] = useState('')
   const [password, setPassword] = useState('')
   const [submitAttempted, setSubmitAttempted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
 
   const handleSubmit = async () => {
     setSubmitAttempted(true)
+    setAuthError(null)
     const usernameEmpty = registerNumber.trim().length === 0
     const passwordEmpty = password.trim().length === 0
     if (usernameEmpty || passwordEmpty) return
 
-    // Demo logic: infer role; replace with real auth API
-    const isPublisher = registerNumber.trim().toLowerCase().includes('publisher')
-    await signIn({ role: isPublisher ? 'publisher' : 'user', registerNumber })
-    // Send to the index route which will redirect based on role
-    router.replace('/')
+    try {
+      setLoading(true)
+      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL
+      if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
+        throw new Error('Missing API base URL configuration')
+      }
+
+      const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ registerNumber: registerNumber.trim(), password: password.trim() })
+      })
+
+      if (!response.ok) {
+        let message = 'Invalid credentials'
+        try {
+          const errJson = await response.json()
+          if (errJson?.error) message = String(errJson.error)
+        } catch {}
+        throw new Error(message)
+      }
+
+      type LoginSuccess = {
+        user: {
+          role: 'user' | 'publisher'
+          name?: string
+          registerNumber?: string
+          email?: string
+          department?: string
+        }
+        // token is set via httpOnly cookie by server; not used here
+      }
+
+      const data: LoginSuccess = await response.json()
+      const role = data?.user?.role
+      if (role !== 'user' && role !== 'publisher') {
+        throw new Error('Unexpected role received')
+      }
+
+      await signIn({
+        role,
+        name: data.user.name,
+        registerNumber: data.user.registerNumber ?? registerNumber.trim(),
+        email: data.user.email,
+        department: data.user.department,
+      })
+      router.replace('/')
+    } catch (err: any) {
+      setAuthError(err?.message || 'Login failed')
+    } finally {
+      setLoading(false)
+    }
   }
 
 
@@ -46,6 +97,12 @@ const Login = () => {
     <Text>Sign in to continue</Text>
 
     <Spacer height={40}/>
+    {authError ? (
+      <View style={styles.errorRow}>
+        <Icon name="information-circle" size={16} color="#9e0202" />
+        <Text style={styles.errorText}>{authError}</Text>
+      </View>
+    ) : null}
     
     <View style={styles.inputContainer}>
       <Icon name='person' size={20} style={[{marginHorizontal: 10}, {color: '#65758c'}]}/>
@@ -75,8 +132,12 @@ const Login = () => {
 
     <Spacer height={40}/>
 
-    <Pressable onPress={handleSubmit} style={({pressed}) => [styles.btn, pressed && styles.pressed] }>
-      <Text style={styles.btnText}>Login</Text>
+    <Pressable disabled={loading} onPress={handleSubmit} style={({pressed}) => [styles.btn, pressed && styles.pressed, loading && styles.btnDisabled] }>
+      {loading ? (
+        <ActivityIndicator color="#ffffff" />
+      ) : (
+        <Text style={styles.btnText}>Login</Text>
+      )}
     </Pressable>
 
     <Spacer height={30}/>
@@ -132,6 +193,9 @@ const styles = StyleSheet.create({
       width: '80%',
       borderRadius: 10,
       padding: 15,
+    },
+    btnDisabled:{
+      opacity: 0.6
     },
     pressed:{
       opacity: 0.7

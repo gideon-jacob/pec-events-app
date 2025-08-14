@@ -65,7 +65,7 @@ const PublisherDashBoardLayout = () => {
               size={22}
               color="#0f172a"
               style={{ marginLeft: 12 }}
-              onPress={() => router.push('/(dashboard-publisher)/publisherHome')}
+              onPress={() => router.back()}
             />
           ),
           href: null,

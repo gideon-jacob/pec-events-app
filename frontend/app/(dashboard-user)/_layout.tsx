@@ -3,13 +3,15 @@ import { Redirect, Tabs } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useAuth } from '../contexts/AuthContext'
 
-const UserDashBoardLayout = () => {
+const UserDashBoardLayout = (): React.ReactElement | null => {
   const { state } = useAuth()
 
   if (state.status === 'loading') return null
   if (state.status === 'unauthenticated') return <Redirect href="/login" />
-  if (state.status === 'authenticated' && state.user.role !== 'user') {
-    return <Redirect href="/adminHome" />
+
+  if (state.status === 'authenticated') {
+    if (!state.user) return <Redirect href="/login" />
+    if (state.user.role !== 'user') return <Redirect href="/publisherHome" />
   }
 
   return (
