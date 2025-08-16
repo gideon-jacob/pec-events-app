@@ -12,7 +12,9 @@ router.post("/login", async (req: Request, res: Response) => {
   } = req.body;
 
   if (!username || !password) {
-    return res.status(400).json({ success: false, message: "Username and password are required." });
+    return res
+      .status(400)
+      .json({ success: false, message: "Username and password are required." });
   }
 
   const result = await authService.login(username, password);
@@ -25,23 +27,43 @@ router.post("/login", async (req: Request, res: Response) => {
 });
 
 router.post("/register", async (req: Request, res: Response) => {
-  const {
+  const { username, password, user_role, department, fullname, mailid } =
+    req.body;
+
+  if (
+    !username ||
+    !password ||
+    !user_role ||
+    !department ||
+    !fullname ||
+    !mailid
+  ) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message:
+          "Username, password, user role, department, full name, and mail ID are required.",
+      });
+  }
+
+  const result = await authService.register(
     username,
     password,
     user_role,
     department,
-    full_name,
+    fullname,
     mailid
-  } = req.body;
-
-  if (!username || !password || !user_role || !department || !full_name || !mailid) {
-    return res.status(400).json({ success: false, message: "Username, password, user role, department, full name, and mail ID are required." });
-  }
-  
-  const result = await authService.register(username, password, user_role, department, full_name, mailid);
+  );
 
   if (result.success) {
-    res.status(201).json({ success: true, message: "User registered successfully.", user: result.user });
+    res
+      .status(201)
+      .json({
+        success: true,
+        message: "User registered successfully.",
+        user: result.user,
+      });
   } else {
     res.status(400).json({ success: false, message: result.message });
   }

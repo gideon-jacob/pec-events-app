@@ -1,6 +1,6 @@
+import "./config";
 import express from "express";
 import cors, { CorsOptions } from "cors";
-import dotenv from "dotenv";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import serverlessHttp from "serverless-http";
@@ -8,12 +8,6 @@ import studentRouter from "./routes/student";
 import publisherRouter from "./routes/publisher";
 import authRouter from "./routes/auth";
 import { authenticateToken, authorizeRoles } from "./middleware/auth.middleware";
-
-// Load environment variables from example first, then override with actual .env
-if (process.env.NODE_ENV !== "production") {
-  dotenv.config({ path: ".env.example" });
-  dotenv.config({ path: ".env" });
-}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -89,7 +83,7 @@ app.use(
 app.use("/api", authRouter);
 
 // Start server
-if (!process.env.IS_LAMBDA) {
+if (process.env.IS_LAMBDA == "false") {
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`API available at http://localhost:${PORT}/api`);
