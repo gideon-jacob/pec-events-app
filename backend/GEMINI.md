@@ -41,22 +41,23 @@ When returning details for a single event, the following schema should be used.
 - `startTime`: string (H:MM AM/PM format, formerly `end_time` in HH:MM:SS)
 - `endTime`: string (H:MM AM/PM format, formerly `end_time` in HH:MM:SS)
 - `venue`: string
+- `mode`: string
 - `eligibility`: string
 - `fee`: string
 - `registrationLink`: string (formerly `registration_link`)
 - `organizers`: array of objects with `orgName` and `parentOrgName`
 - `contacts`: array of objects with `name`, `role`, and `phone`
 - `imageUrl`: string (signed CloudFront URL, formerly `image_url`)
-- `publisher`: object with `name` (from `fullname`) and `department`
+- `publisher`: object with `name` (from `fullname`) and `department` (Excluded for StudentService)
 
 The following fields from the database should be excluded from the response:
 - `publisher_id`
 - `created_at`
 - `updated_at`
 
-# Get All Events Schema (for getEvents)
+# Get All Events Schema (for PublisherService getEvents)
 
-When returning a list of all events, the following schema should be used for each event in the list.
+When returning a list of all events for `PublisherService`, the following schema should be used for each event in the list.
 
 - `id`: string (UUID)
 - `title`: string
@@ -68,6 +69,17 @@ When returning a list of all events, the following schema should be used for eac
 
 Events should be sorted in chronological order based on `date`, `start_time`, and `created_at` (like a social media feed).
 
+# Get All Events Schema (for StudentService getEvents)
+
+When returning a list of all events for `StudentService`, the following schema should be used for each event in the list.
+
+- `imageUrl`: string
+- `title`: string
+- `description`: string
+- `date`: string
+- `startTime`: string
+- `eventType`: string
+
 # Get Publisher Profile
 
 The `GET /profile` route in `src/routes/publisher.ts` is used to fetch the publisher's profile.
@@ -77,3 +89,16 @@ The `GET /profile` route in `src/routes/publisher.ts` is used to fetch the publi
     - `user`: object with `username`, `role` (always "Publisher"), and `department`.
     - `pastEvents`: array of event objects, each with `imageUrl`, `title`, `date` (format "10 Jan, 2025"), and `eventType`.
     - `upcomingEvents`: array of event objects, with the same structure as `pastEvents`.
+
+# Student Service
+
+The `StudentService` in `src/services/student.service.ts` now includes the following functionalities:
+- `getEvents(dept, type, name)`: Fetches a list of upcoming events. It supports filtering by department, event type, and name, and ensures only future events are returned. Event image URLs are signed. The output schema aligns with the "Get All Events Schema (for StudentService getEvents)" mentioned above.
+- `getEventById(eventId)`: Retrieves a single event's details by its ID, similar to the `PublisherService`'s `getEventById` method. It signs the image URL and formats time fields. The output schema aligns with the "Event Details Schema" mentioned above.
+
+# Event Utility Functions
+
+The `src/utils/event.utils.ts` file contains common helper functions used across different services:
+- `signUrl(url)`: Signs CloudFront URLs for secure, time-limited access.
+- `formatTime(timeString)`: Formats time strings into a user-friendly "H:MM AM/PM" format.
+- `formatDateToDDMonYYYY(dateString)`: Formats date strings into a user-friendly "DD Mon, YYYY" format.

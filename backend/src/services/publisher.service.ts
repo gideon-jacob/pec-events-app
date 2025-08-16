@@ -2,59 +2,13 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client, S3_BUCKET_NAME } from "../aws-s3";
 import { randomBytes } from "crypto";
-import { getSignedUrl } from "aws-cloudfront-sign";
+import { signUrl, formatTime, formatDateToDDMonYYYY } from "../utils/event.utils";
 
 export class PublisherService {
   private supabase: SupabaseClient;
 
   constructor(supabaseClient: SupabaseClient) {
     this.supabase = supabaseClient;
-  }
-
-  /**
-   * Signs a given CloudFront URL with a private key for secure, time-limited access.
-   * @param url - The original CloudFront URL to sign.
-   * @returns The signed URL with an expiration time.
-   */
-  private signUrl(url: string): string {
-    const keyPairId = process.env.CLOUDFRONT_KEY_PAIR_ID;
-    if (!keyPairId) {
-      throw new Error("CloudFront key pair ID is not configured.");
-    }
-
-    const privateKey = process.env.CLOUDFRONT_SECRET_PRIVATE_KEY;
-    if (!privateKey) {
-      throw new Error("CloudFront private key is not configured.");
-    }
-
-    const signedUrl = getSignedUrl(url, {
-      keypairId: keyPairId,
-      privateKeyString: privateKey,
-      expireTime: new Date().getTime() + 24 * 60 * 60 * 1000, // 1 day in ms
-    });
-
-    return signedUrl;
-  }
-
-  /**
-   * Formats a time string (e.g., "14:30:00" or "14:30") into a user-friendly "H:MM AM/PM" format.
-   * @param timeString - The time string to format.
-   * @returns The formatted time string.
-   */
-  private formatTime(timeString: string): string {
-    if (!timeString) return "";
-    const [hours, minutes] = timeString.split(":").map(Number);
-
-    const date = new Date();
-    date.setHours(hours, minutes);
-
-    let formattedHours = date.getHours();
-    const ampm = formattedHours >= 12 ? "PM" : "AM";
-    formattedHours = formattedHours % 12;
-    formattedHours = formattedHours ? formattedHours : 12; // the hour '0' should be '12'
-    const formattedMinutes = minutes < 10 ? "0" + minutes : minutes;
-
-    return `${formattedHours}:${formattedMinutes} ${ampm}`;
   }
 
   /**
@@ -132,26 +86,6 @@ export class PublisherService {
     }
 
     const now = new Date();
-    const today = new Intl.DateTimeFormat("en-IN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      timeZone: "Asia/Kolkata",
-    }).format(now);
-
-    query = query
-      .gte("date", today)
-      .order("date", { ascending: true })
-      .order("start_time", { ascending: true })
-      .order("created_at", { ascending: true });
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error("Error getting events:", error);
-      return { success: false, message: "Failed to get events." };
-    }
-
     const indiaTime = new Intl.DateTimeFormat("en-IN", {
       year: "numeric",
       month: "2-digit",
@@ -166,7 +100,20 @@ export class PublisherService {
     const [datePart, timePart] = indiaTime.split(", ");
     const [day, month, year] = datePart.split("/").map(Number);
     const [hour, minute, second] = timePart.split(":").map(Number);
-
+    
+    query = query
+      .gte("date", `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`)
+      .order("date", { ascending: true })
+      .order("start_time", { ascending: true })
+      .order("created_at", { ascending: true });
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error("Error getting events:", error);
+      return { success: false, message: "Failed to get events." };
+    }
+   
     const currentIndiaDateTime = new Date(
       year,
       month - 1,
@@ -204,7 +151,7 @@ export class PublisherService {
     if (events) {
       events.forEach((event: any) => {
         if (event.image_url) {
-          event.image_url = this.signUrl(event.image_url);
+          event.image_url = signUrl(event.image_url);
         }
       });
     }
@@ -240,6 +187,7 @@ export class PublisherService {
         start_time,
         end_time,
         venue,
+        mode,
         eligibility,
         fee,
         registration_link,
@@ -261,14 +209,14 @@ export class PublisherService {
     }
 
     if (data && data.image_url) {
-      data.image_url = this.signUrl(data.image_url);
+      data.image_url = signUrl(data.image_url);
     }
 
     if (data && data.start_time) {
-      data.start_time = this.formatTime(data.start_time);
+      data.start_time = formatTime(data.start_time);
     }
     if (data && data.end_time) {
-      data.end_time = this.formatTime(data.end_time);
+      data.end_time = formatTime(data.end_time);
     }
 
     const formattedEvent = {
@@ -280,6 +228,7 @@ export class PublisherService {
       startTime: data.start_time,
       endTime: data.end_time,
       venue: data.venue,
+      mode: data.mode,
       eligibility: data.eligibility,
       fee: data.fee,
       registrationLink: data.registration_link,
@@ -300,6 +249,7 @@ export class PublisherService {
     startTime: string,
     endTime: string,
     venue: string,
+    mode: string,
     eligibility: string,
     fee: string,
     registrationLink: string,
@@ -334,6 +284,7 @@ export class PublisherService {
           start_time: startTime,
           end_time: endTime,
           venue,
+          mode,
           eligibility,
           fee,
           registration_link: registrationLink,
@@ -411,6 +362,7 @@ export class PublisherService {
       startTime,
       endTime,
       venue,
+      mode,
       eligibility,
       fee,
       registrationLink,
@@ -426,6 +378,7 @@ export class PublisherService {
     if (startTime) updateData.start_time = startTime;
     if (endTime) updateData.end_time = endTime;
     if (venue) updateData.venue = venue;
+    if (mode) updateData.mode = mode;
     if (eligibility) updateData.eligibility = eligibility;
     if (fee) updateData.fee = fee;
     if (registrationLink) updateData.registration_link = registrationLink;
@@ -506,18 +459,6 @@ export class PublisherService {
 
 
   /**
-   * Formats a date string (YYYY-MM-DD) into a user-friendly "DD Mon, YYYY" format.
-   * @param dateString - The date string to format.
-   * @returns The formatted date string.
-   */
-  private formatDateToDDMonYYYY(dateString: string): string {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    const options: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" };
-    return date.toLocaleDateString("en-US", options).replace(/,/, "");
-  }
-
-  /**
    * Fetches the profile data for a publisher, including their details and associated events.
    * @param username - The username of the publisher.
    * @returns An object containing publisher details, past events, and upcoming events.
@@ -557,9 +498,9 @@ export class PublisherService {
       const eventStartTime = new Date(`${event.date}T${event.start_time}`);
 
       const formattedEvent = {
-        imageUrl: event.image_url ? this.signUrl(event.image_url) : null,
+        imageUrl: event.image_url ? signUrl(event.image_url) : null,
         title: event.title,
-        date: this.formatDateToDDMonYYYY(event.date),
+        date: formatDateToDDMonYYYY(event.date),
         eventType: event.event_type,
       };
 

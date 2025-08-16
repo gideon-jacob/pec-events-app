@@ -12,6 +12,10 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.get("/events", async (req: Request, res: Response) => {
   const { dept = '', type = '', name = '' } = req.query as { dept: string, type: string, name: string };
   const result = await publisherService.getEvents(dept, type, name);
+  
+  if (!result.success) {
+    return res.status(500).json(result);
+  }
   res.json(result);
 });
 
@@ -64,6 +68,7 @@ router.post("/events", upload.single('image'), async (req: Request, res: Respons
     startTime,
     endTime,
     venue,
+    mode,
     eligibility,
     fee,
     registrationLink,
@@ -75,7 +80,7 @@ router.post("/events", upload.single('image'), async (req: Request, res: Respons
   const imageFile = req.file; // Multer attaches the file to req.file
 
   // Basic validation
-  if (!title || !description || !eventType || !date || !startTime || !endTime || !venue || !eligibility || !fee || !organizers || !contacts) {
+  if (!title || !description || !eventType || !date || !startTime || !endTime || !venue || !mode || !eligibility || !fee || !organizers || !contacts) {
       return res.status(400).json({ success: false, message: "Missing required event fields." });
   }
 
@@ -87,6 +92,7 @@ router.post("/events", upload.single('image'), async (req: Request, res: Respons
     startTime,
     endTime,
     venue,
+    mode,
     eligibility,
     fee,
     registrationLink,
@@ -110,7 +116,7 @@ router.get("/profile", async (req: Request, res: Response) => {
   if (!userId) {
     return res.status(401).json({ success: false, message: "Unauthorized: User ID not found." });
   }
-  
+
   const result = await publisherService.getProfile(userId);
   if (!result.success) {
     return res.status(500).json(result);
