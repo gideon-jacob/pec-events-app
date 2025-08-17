@@ -82,6 +82,15 @@ app.use(
 );
 app.use("/api", authRouter);
 
+// Health check endpoint
+app.get("/", (req, res) => {
+  res.send("Welcome to Prathyusha Events!");
+});
+
+app.get("/healthz", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 // Start server
 if (process.env.IS_LAMBDA == "false") {
   app.listen(PORT, () => {
