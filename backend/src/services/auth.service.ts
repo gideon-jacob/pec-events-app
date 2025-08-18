@@ -17,39 +17,73 @@ export class AuthService {
   }
 
   async login(username: string, password: string) {
-    // 1. Find user by username in your database (e.g., a 'users' table)
-    const { data: userData, error: userError } = await this.supabase
-      .from("publishers") // Replace 'users' with your actual user table name
-      .select("id, username, hashed_password, user_role") // Select necessary fields including user_role
-      .eq("username", username)
-      .single();
+    try {
+      // 1. Find user by username in your database (e.g., a 'users' table)
+      const { data: userData, error: userError } = await this.supabase
+        .from("publishers") // Replace 'users' with your actual user table name
+        .select("id, username, hashed_password, user_role") // Select necessary fields including user_role
+        .eq("username", username)
+        .single();
 
-    if (userError || !userData) {
-      return { success: false, message: "Invalid username or password." };
+      if (userError || !userData) {
+        return { success: false, code: "USER_NOT_FOUND", message: "User account does not exist." };
+      }
+
+      console.log(userData);
+      // 2. Compare provided password with stored hashed password
+      if (!userData.hashed_password || typeof userData.hashed_password !== "string") {
+        return {
+          success: false,
+          code: "PASSWORD_HASH_INVALID",
+          message: "Stored password hash is invalid. Please contact support.",
+        };
+      }
+
+      let isPasswordValid = false;
+      try {
+        isPasswordValid = await bcrypt.compare(password, userData.hashed_password);
+      } catch (err: any) {
+        return {
+          success: false,
+          code: "PASSWORD_VERIFY_ERROR",
+          message: "Password verification failed. Please try again or reset your password.",
+        }; 
+      }
+
+      if (!isPasswordValid) {
+        return { success: false, code: "WRONG_PASSWORD", message: "Incorrect password." };
+      }
+
+      // 3. Generate JWT token
+      let token: string;
+      try {
+        token = jwt.sign(
+          {
+            userId: userData.id,
+            username: userData.username,
+            role: userData.user_role,
+          },
+          this.jwtSecret,
+          { expiresIn: "90d" } // Token expires in ~3 months
+        );
+      } catch (err: any) {
+        return {
+          success: false,
+          code: "TOKEN_SIGN_ERROR",
+          message: "Failed to create session token. Please try again.",
+        };
+      }
+
+      return { success: true, token, userRole: userData.user_role };
+    } catch (err: any) {
+      // Catch-all to avoid Lambda 502s
+      console.error("Login unexpected error:", err);
+      return {
+        success: false,
+        code: "UNEXPECTED_ERROR",
+        message: "An unexpected error occurred during login.",
+      };
     }
-
-    // 2. Compare provided password with stored hashed password
-    const isPasswordValid = await bcrypt.compare(
-      password,
-      userData.hashed_password
-    );
-
-    if (!isPasswordValid) {
-      return { success: false, message: "Invalid username or password." };
-    }
-
-    // 3. Generate JWT token
-    const token = jwt.sign(
-      {
-        userId: userData.id,
-        username: userData.username,
-        role: userData.user_role,
-      },
-      this.jwtSecret,
-      { expiresIn: "90d" } // Token expires in 180 days (approx 3 months)
-    );
-
-    return { success: true, token, userRole: userData.user_role };
   }
 
   async register(
