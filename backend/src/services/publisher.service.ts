@@ -2,7 +2,11 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client, S3_BUCKET_NAME } from "../aws-s3";
 import { randomBytes } from "crypto";
-import { signUrl, formatTime, formatDateToDDMonYYYY } from "../utils/event.utils";
+import {
+  signUrl,
+  formatTime,
+  formatDateToDDMonYYYY,
+} from "../utils/event.utils";
 
 export class PublisherService {
   private supabase: SupabaseClient;
@@ -18,11 +22,17 @@ export class PublisherService {
    */
   private async uploadImageToS3(file: Express.Multer.File): Promise<string> {
     if (!S3_BUCKET_NAME) {
+      console.error(
+        "S3 bucket name is not configured in environment variables"
+      );
       throw new Error("S3 bucket name is not configured.");
     }
 
     const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN;
     if (!cloudfrontDomain) {
+      console.error(
+        "CloudFront domain is not configured in environment variables"
+      );
       throw new Error("CloudFront domain is not configured.");
     }
 
@@ -100,20 +110,25 @@ export class PublisherService {
     const [datePart, timePart] = indiaTime.split(", ");
     const [day, month, year] = datePart.split("/").map(Number);
     const [hour, minute, second] = timePart.split(":").map(Number);
-    
+
     query = query
-      .gte("date", `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`)
+      .gte(
+        "date",
+        `${year}-${month.toString().padStart(2, "0")}-${day
+          .toString()
+          .padStart(2, "0")}`
+      )
       .order("date", { ascending: true })
       .order("start_time", { ascending: true })
       .order("created_at", { ascending: true });
-    
+
     const { data, error } = await query;
-    
+
     if (error) {
       console.error("Error getting events:", error);
       return { success: false, message: "Failed to get events." };
     }
-   
+
     const currentIndiaDateTime = new Date(
       year,
       month - 1,
@@ -270,6 +285,7 @@ export class PublisherService {
       .single();
 
     if (publisherError || !publisher) {
+      console.error("Publisher not found for event creation:", publisherError);
       throw new Error("Publisher not found.");
     }
 
@@ -297,7 +313,7 @@ export class PublisherService {
       .select();
 
     if (error) {
-      console.error("Error creating event:", error);
+      console.error("Error creating event in database:", error);
       throw new Error("Failed to create event.");
     }
 
@@ -457,7 +473,6 @@ export class PublisherService {
     return { success: true, message: "Event deleted successfully." };
   }
 
-
   /**
    * Fetches the profile data for a publisher, including their details and associated events.
    * @param username - The username of the publisher.
@@ -475,7 +490,7 @@ export class PublisherService {
       console.error("Error fetching publisher data:", publisherError);
       return { success: false, message: "Publisher not found." };
     }
- 
+
     // Fetch events for the publisher
     const { data: eventsData, error: eventsError } = await this.supabase
       .from("events")

@@ -6,15 +6,31 @@ const router = express.Router();
 const studentService = new StudentService(supabase);
 
 router.get("/events", async (req: Request, res: Response) => {
-  const { dept = '', type = '', name = '' } = req.query as { dept: string, type: string, name: string };
-  const result = await studentService.getEvents(dept, type, name);
-  res.json(result);
+  try {
+    const { dept = '', type = '', name = '' } = req.query as { dept: string, type: string, name: string };
+    const result = await studentService.getEvents(dept, type, name);
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: "An unexpected error occurred.", error: error.message });
+  }
 });
 
 router.get("/events/:eventId", async (req: Request, res: Response) => {
-  const { eventId } = req.params;
-  const result = await studentService.getEventById(eventId);
-  res.json(result);
+  try {
+    const { eventId } = req.params;
+    const result = await studentService.getEventById(eventId);
+    
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: "An unexpected error occurred.", error: error.message });
+  }
 });
 
 export default router;
