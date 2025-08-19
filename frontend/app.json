@@ -24,17 +24,31 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
+<<<<<<< HEAD
+      "package": "com.tamilx.peceventapp"
+=======
       "package": "com.gideonjacob.peceventapp"
+>>>>>>> 873f65000b2804f1e98d971e42c2dbe437098cdc
     },
     "web": {
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
     },
+<<<<<<< HEAD
+    "plugins": [
+      "expo-router"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "50d3cc6a-564e-43a6-848c-4d371bb7accc"
+=======
     "plugins": ["expo-router"],
     "extra": {
       "router": {},
       "eas": {
         "projectId": "2e5641a2-b139-48d7-9cc1-85824035ad28"
+>>>>>>> 873f65000b2804f1e98d971e42c2dbe437098cdc
       }
     }
   }
