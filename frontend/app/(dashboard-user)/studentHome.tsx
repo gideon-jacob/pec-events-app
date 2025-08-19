@@ -62,8 +62,10 @@ const StudentHome = () => {
     let isMounted = true
     ;(async () => {
       try {
-        const data = await mockApi.listHomeEvents()
+        const data = await mockApi.listStudentHomeEvents()
         if (isMounted) setEvents(data)
+      } catch (err: any) {
+        console.error('Load student events error:', err)
       } finally {
         if (isMounted) setLoading(false)
       }

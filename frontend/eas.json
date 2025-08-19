@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
   "cli": {
     "version": ">= 16.17.4",
     "appVersionSource": "remote"
@@ -10,9 +9,6 @@
       "distribution": "internal"
     },
     "preview": {
-      "android": {
-        "buildType": "apk"
-      },
       "distribution": "internal"
     },
     "production": {
@@ -21,18 +17,5 @@
   },
   "submit": {
     "production": {}
-=======
-  "build": {
-    "production": {
-      "android": { "buildType": "app-bundle" },
-      "ios": {
-        "distribution": "internal",
-        "enterpriseProvisioning": "universal"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "${EXPO_PUBLIC_API_URL}"
-      }
-    }
->>>>>>> 873f65000b2804f1e98d971e42c2dbe437098cdc
   }
 }

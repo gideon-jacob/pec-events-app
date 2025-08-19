@@ -12,7 +12,6 @@ type Contact = { name: string; role: string; phone: string }
 type EventForm = {
   title: string
   description: string
-  imageUrl: string
   eligibility: string
   date: string // dd-mm-yyyy
   startTime: string
@@ -34,7 +33,6 @@ export default function CreateEvent() {
   const [form, setForm] = useState<EventForm>({
     title: '',
     description: '',
-    imageUrl: '',
     eligibility: '',
     date: '',
     startTime: '',
@@ -59,8 +57,9 @@ export default function CreateEvent() {
     const hasValidContacts = form.contacts.some(contact =>
       contact.name.trim().length > 0 && contact.phone.trim().length > 0
     );
-    return hasRequiredFields && hasValidDate && hasValidTimes && hasValidContacts;
-  }, [form.title, form.description, form.date, form.startTime, form.endTime, form.contacts])
+    const hasValidMode = form.mode !== '';
+    return hasRequiredFields && hasValidDate && hasValidTimes && hasValidContacts && hasValidMode;
+  }, [form.title, form.description, form.date, form.startTime, form.endTime, form.contacts, form.mode])
 
   function updateOrganizer(index: number, key: keyof Organizer, value: string) {
     setForm((prev) => {
@@ -96,15 +95,25 @@ export default function CreateEvent() {
 
   async function onSubmit() {
     if (!isValid) {
-      Alert.alert('Missing fields', 'Please fill the required fields (Title, Description)')
+      Alert.alert('Missing fields', 'Please fill the required fields (Title, Description, Date, Start Time, End Time, Mode, and at least one contact)')
       return
     }
+
     setSubmitting(true)
     try {
-      const payload = { ...form }
-      await mockApi.createEvent(payload)
-      Alert.alert('Success', 'Event created (mock)')
-      router.replace(PUBLISHER_HOME_PATH)
+      const payload = { image: "", data: form }
+      console.log('Creating event with payload:', payload)
+      const res = await mockApi.createPublisherEvent(payload)
+      console.log('Create event response:', res)
+      if (res?.success) {
+        Alert.alert('Success', res.message || 'Event created successfully')
+        router.replace(PUBLISHER_HOME_PATH)
+      } else {
+        Alert.alert('Error', res?.message || 'Failed to create event')
+      }
+    } catch (error) {
+      console.error('Error creating event:', error)
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to create event')
     } finally {
       setSubmitting(false)
     }

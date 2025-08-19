@@ -2,10 +2,31 @@ import React from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { Redirect, router } from 'expo-router'
 import { useAuth } from '../contexts/AuthContext'
+import { mockApi } from '../services/mockApi'
 import Icon from 'react-native-vector-icons/Ionicons'
 
 const StudentProfile = () => {
   const { state, signOut } = useAuth()
+  const [loadingProfile, setLoadingProfile] = React.useState(true)
+  const [profileName, setProfileName] = React.useState<string | undefined>(undefined)
+  const [profileDept, setProfileDept] = React.useState<string | undefined>(undefined)
+
+  React.useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const profile = await mockApi.fetchUserProfile({ role: 'user' })
+        if (mounted) {
+          setProfileName(profile?.name)
+          setProfileDept(profile?.department)
+        }
+      } catch {}
+      finally {
+        if (mounted) setLoadingProfile(false)
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
   const handleChangePassword = () => {
     // TODO: navigate to change password
     console.log('Change password pressed')
@@ -28,7 +49,7 @@ const StudentProfile = () => {
     return <Redirect href="/login" />
   }
   
-  const username = state.user?.registerNumber || state.user?.name || 'Student'
+  const username = profileName || state.user?.registerNumber || state.user?.name || 'Student'
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Profile</Text>
@@ -55,7 +76,7 @@ const StudentProfile = () => {
         <View style={styles.divider} />
 
         <Text style={styles.label}>Department</Text>
-        <Text style={styles.value}>{state.user?.department || '—'}</Text>
+        <Text style={styles.value}>{profileDept || state.user?.department || '—'}</Text>
       </View>
 
       {/* Actions */}

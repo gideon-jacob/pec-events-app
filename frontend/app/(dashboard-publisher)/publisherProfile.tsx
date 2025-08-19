@@ -31,7 +31,7 @@ const PublisherProfile = () => {
 
   const fetchUserProfile = useCallback(async () => {
     try {
-      const profile = await mockApi.fetchUserProfile()
+      const profile = await mockApi.fetchUserProfile({ role: 'publisher' })
       setUserProfile(profile)
     } catch (err) {
       setError('Failed to load profile')
@@ -42,8 +42,10 @@ const PublisherProfile = () => {
   const fetchEvents = useCallback(async (status: 'upcoming' | 'ongoing' | 'past') => {
     try {
       setLoading(true)
-      const eventsData = await mockApi.fetchPublisherEvents(status)
-      setEvents(eventsData)
+      const eventsData = await mockApi.fetchPublisherEvents()
+      // Filter client-side to maintain the tab behavior
+      const filtered = eventsData.filter(e => e.status === status)
+      setEvents(filtered)
       setError(null)
     } catch (err) {
       setError('Failed to load events')

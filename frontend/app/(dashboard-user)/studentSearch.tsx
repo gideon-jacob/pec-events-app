@@ -30,9 +30,15 @@ const StudentSearch = () => {
 
   useEffect(() => {
     let mounted = true
+    setLoading(true)
     ;(async () => {
       try {
-        const data = await mockApi.listSearchEvents()
+        const params = {
+          dept: selectedDepartment !== 'All Departments' ? selectedDepartment : undefined,
+          type: selectedCategory !== 'All' ? selectedCategory : undefined,
+          name: query.trim() !== '' ? query.trim() : undefined,
+        }
+        const data = await mockApi.listSearchEvents(params)
         if (mounted) setAllEvents(data)
       } finally {
         if (mounted) setLoading(false)
@@ -41,7 +47,7 @@ const StudentSearch = () => {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [query, selectedDepartment, selectedCategory])
 
   const filtered = useMemo(() => {
     return allEvents.filter((e) => {

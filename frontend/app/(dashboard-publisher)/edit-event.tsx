@@ -10,8 +10,8 @@ import {
 import { router, useLocalSearchParams } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useEffect, useMemo, useState } from 'react'
-import { EventItem, SearchEvent } from '../data/events'
 import { mockApi } from '../services/mockApi'
+import { type EventItem, type SearchEvent } from '../data/events'
 
 const EditEvent = () => {
   const params = useLocalSearchParams<{ id?: string }>()
@@ -22,7 +22,7 @@ const EditEvent = () => {
     const load = async () => {
       try {
         if (params.id) {
-          const ev = await mockApi.getEventById(params.id)
+          const ev = await mockApi.getPublisherEventById(params.id)
           setFetched(ev)
         }
       } finally {
@@ -51,64 +51,41 @@ const EditEvent = () => {
   }
 
   const eventData = useMemo(() => {
-    const eventInfo = fetched as EventData | null
-    const title = eventInfo?.title ?? 'Getting Started with Digital Marketing'
-    const description =
-      eventInfo?.description ??
-      'Join us for an insightful seminar on the fundamentals of digital marketing. This event will cover key strategies and tools to help you succeed in the online world.'
-    const date = eventInfo?.date ?? 'July 20, 2024'
-    const time = eventInfo?.time ?? '10:00 AM - 1:00 PM'
-    const dateTime = `${date}${time ? `, ${time}` : ''}`
-    const eventType = eventInfo?.type ?? eventInfo?.category ?? 'Seminar'
-    const venue = (fetched as any)?.venue ?? 'College Auditorium (Offline)'
-    const eligibility = (fetched as any)?.eligibility ?? 'Open to all students'
-    const entryFee = (fetched as any)?.fee ?? 'Free'
+    const ev = fetched as any
+    if (!ev) {
+      return {
+        title: 'Event',
+        bannerTitle: 'Event',
+        description: '',
+        dateTime: '',
+        venue: '',
+        eligibility: '',
+        eventType: 'Seminar',
+        entryFee: '',
+        registrationLink: '',
+        organizers: [],
+        creator: { name: '', subtitle: '', icon: 'person' },
+        contacts: [],
+      }
+    }
+
+    const date: string = ev?.date || ''
+    const time: string = ev?.time || ev?.startTime || ''
+    const dateTime = date && time ? `${date}, ${time}` : (date || time || '')
 
     return {
-      title,
-      bannerTitle: title,
-      description,
+      title: ev?.title || 'Event',
+      bannerTitle: ev?.title || 'Event',
+      description: ev?.description || '',
       dateTime,
-      venue,
-      eligibility,
-      eventType,
-      entryFee,
-      registrationLink:
-        (fetched as any)?.registrationLink ?? 'https://example.com/register',
-      organizers:
-        (fetched as any)?.organizers ?? [
-          {
-            name: 'Prathyusha Engineering College',
-            subtitle: 'Department of Computer Science',
-            icon: 'business',
-          },
-          {
-            name: 'Entrepreneurship Cell',
-            subtitle: 'In association with IIC',
-            icon: 'people',
-          },
-        ],
-      creator:
-        (fetched as any)?.creator ?? {
-          name: 'Publisher User',
-          subtitle: 'Department of Computer Science',
-          icon: 'person',
-        },
-      contacts:
-        (fetched as any)?.contacts ?? [
-          {
-            name: 'Rohan Sharma',
-            role: 'Student Coordinator',
-            phone: '+91 98765 43210',
-            icon: 'person',
-          },
-          {
-            name: 'Priya Singh',
-            role: 'Faculty Coordinator',
-            phone: '+91 98765 43211',
-            icon: 'person',
-          },
-        ],
+      venue: ev?.venue || '',
+      eligibility: ev?.eligibility || '',
+      eventType: ev?.type || ev?.category || ev?.eventType || 'Seminar',
+      entryFee: ev?.fee || '',
+      registrationLink: ev?.registrationLink || '',
+      organizers: Array.isArray(ev?.organizers) ? ev.organizers : [],
+      creator: ev?.creator || (ev?.publisher ? { name: ev.publisher.name || '', subtitle: ev.publisher.department || '', icon: 'person' } : { name: '', subtitle: '', icon: 'person' }),
+      contacts: Array.isArray(ev?.contacts) ? ev.contacts : [],
     }
   }, [fetched])
 

@@ -104,7 +104,7 @@ export default function EditEventForm() {
     const load = async () => {
       try {
         if (!id) return
-        const ev = await mockApi.getEventById(String(id))
+        const ev = await mockApi.getPublisherEventById(String(id))
         if (ev) {
           setForm((prev) => ({
             ...prev,
@@ -204,8 +204,12 @@ export default function EditEventForm() {
     setSubmitting(true)
     try {
       const payload = { ...form }
-      await mockApi.updateEvent(String(id), payload as any)
-      Alert.alert('Success', 'Event updated (mock)')
+      const res = await mockApi.updatePublisherEvent(String(id), payload)
+      if (res?.success) {
+        Alert.alert('Success', res.message || 'Event updated successfully')
+      } else {
+        Alert.alert('Error', res?.message || 'Failed to update event')
+      }
       router.replace('/(dashboard-publisher)/publisherHome')
     } catch (error) {
       Alert.alert('Error', 'Failed to update event. Please try again.')

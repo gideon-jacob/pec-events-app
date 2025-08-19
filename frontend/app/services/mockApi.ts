@@ -52,22 +52,235 @@ function genId(prefix = 'e'): string {
 let mutableSearchEvents = [...searchEvents]
 let mutableHomeEvents = [...homeEvents]
 
+// Helper: convert dd-mm-yyyy -> yyyy-mm-dd if needed
+function normalizeDate(d?: string): string | undefined {
+  if (!d) return undefined
+  const m = d.match(/^([0-3]\d)-([0-1]\d)-(\d{4})$/)
+  if (m) {
+    const [, dd, mm, yyyy] = m
+    return `${yyyy}-${mm}-${dd}`
+  }
+  return d
+}
+
+// Helper: transform frontend form payload to backend schema for `data` JSON
+function toBackendEventData(dataObj: Record<string, any>): Record<string, any> {
+  const mappedOrganizers = Array.isArray(dataObj.organizers)
+    ? dataObj.organizers
+        .filter((o: any) => o && (o.parentOrganization || o.eventOrganizer))
+        .map((o: any) => ({ parentOrgName: o.parentOrganization || '', orgName: o.eventOrganizer || '' }))
+    : undefined
+
+  const processedData = {
+    ...dataObj,
+    // field mappings
+    eventType: dataObj.type,
+    date: normalizeDate(dataObj.date),
+    startTime: dataObj.startTime,
+    endTime: dataObj.endTime,
+    organizers: mappedOrganizers,
+    // remove frontend-only fields
+    type: undefined,
+    imageUrl: undefined, // image is sent as multipart file, not URL
+  }
+
+  // strip undefined
+  return Object.fromEntries(Object.entries(processedData).filter(([, v]) => v !== undefined))
+}
+
 export const mockApi = {
-  async fetchUserProfile(): Promise<UserProfile> {
-    await delay(300)
-    return {
-      name: 'Publisher',
-      role: 'Publisher',
-      department: 'Department of CSE',
-      email: 'prathyusha@college.edu',
+  
+  async listStudentHomeEvents(): Promise<EventItem[]> {
+    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
+    if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
+      throw new Error('Missing API base URL configuration')
     }
+    const response = await fetch(`${String(baseUrl).replace(/\/$/, '')}/api/student/events`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to load events (${response.status})`)
+    }
+    const json: { success: boolean; events: Array<{ id: string; imageUrl?: string; title: string; description: string; date?: string; startTime?: string; eventType?: string }> } = await response.json()
+    console.log('Student events API response:', json)
+    const allowed: EventItem['type'][] = ['Workshop', 'Seminar', 'Guest Lecture', 'Industrial Visit', 'Cultural', 'Sports']
+    const mapType = (t?: string): EventItem['type'] => (t && (allowed as string[]).includes(t) ? (t as EventItem['type']) : 'Seminar')
+    return (json.events || []).map((e) => ({
+      id: e.id,
+      image: e.imageUrl ? { uri: e.imageUrl } : undefined,
+      title: e.title,
+      description: e.description,
+      date: e.date,
+      time: e.startTime,
+      type: mapType(e.eventType),
+    }))
   },
 
-  /*
-  async fetchUserProfile() {
-  const { data } = await api.get('/publisher/profile');
-  return data;
-  } */
+  async getStudentEventById(id: string): Promise<(EventItem | SearchEvent) | null> {
+    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
+    if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
+      throw new Error('Missing API base URL configuration')
+    }
+    const response = await fetch(`${String(baseUrl).replace(/\/$/, '')}/api/student/events/${encodeURIComponent(id)}`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    })
+    if (!response.ok) {
+      if (response.status === 404) return null
+      throw new Error(`Failed to load event (${response.status})`)
+    }
+    const json: { success: boolean; event?: {
+      id: string;
+      title: string;
+      description: string;
+      eventType?: string;
+      date?: string;
+      startTime?: string;
+      endTime?: string;
+      venue?: string;
+      mode?: string;
+      eligibility?: string;
+      fee?: string;
+      registrationLink?: string;
+      organizers?: Array<{ orgName: string; parentOrgName?: string }>;
+      contacts?: Array<{ name: string; role: string; phone: string }>;
+      imageUrl?: string;
+    } } = await response.json()
+    console.log('Event detail API response:', json)
+
+    if (!json.event) return null
+
+    const allowed: EventItem['type'][] = ['Workshop', 'Seminar', 'Guest Lecture', 'Industrial Visit', 'Cultural', 'Sports']
+    const mapType = (t?: string): EventItem['type'] => (t && (allowed as string[]).includes(t) ? (t as EventItem['type']) : 'Seminar')
+
+    const ev = json.event
+    const mapped: EventItem = {
+      id: ev.id,
+      type: mapType(ev.eventType),
+      title: ev.title,
+      description: ev.description,
+      date: ev.date,
+      time: ev.startTime,
+      venue: ev.venue,
+      eligibility: ev.eligibility,
+      fee: ev.fee,
+      registrationLink: ev.registrationLink,
+      image: ev.imageUrl ? { uri: ev.imageUrl } : undefined,
+      organizers: Array.isArray(ev.organizers)
+        ? ev.organizers.map(o => ({ name: o.orgName, subtitle: o.parentOrgName || '', icon: 'people' }))
+        : undefined,
+      contacts: Array.isArray(ev.contacts)
+        ? ev.contacts.map(c => ({ name: c.name, role: c.role, phone: c.phone, icon: 'person' }))
+        : undefined,
+    }
+
+    return mapped
+  },
+
+  async getPublisherEventById(id: string): Promise<(EventItem | SearchEvent) | null> {
+    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
+    if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
+      throw new Error('Missing API base URL configuration')
+    }
+    const token = await (async () => {
+      try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
+    })()
+    const resolvedToken = typeof token === 'string' ? token : (await token)
+    const response = await fetch(`${String(baseUrl).replace(/\/$/, '')}/api/publisher/events/${encodeURIComponent(id)}`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        ...(resolvedToken ? { Authorization: `Bearer ${resolvedToken}` } : {}),
+      },
+    })
+    if (!response.ok) {
+      if (response.status === 404) return null
+      throw new Error(`Failed to load publisher event (${response.status})`)
+    }
+    const json: { success: boolean; event?: {
+      id: string;
+      title: string;
+      description: string;
+      eventType?: string;
+      date?: string;
+      startTime?: string;
+      endTime?: string;
+      venue?: string;
+      mode?: string;
+      eligibility?: string;
+      fee?: string;
+      registrationLink?: string;
+      organizers?: Array<{ orgName: string; parentOrgName?: string }>;
+      contacts?: Array<{ name: string; role: string; phone: string }>;
+      imageUrl?: string;
+      publisher?: { name?: string; department?: string };
+    } } = await response.json()
+    console.log('Publisher event detail API response:', json)
+
+    if (!json.event) return null
+
+    const allowed: EventItem['type'][] = ['Workshop', 'Seminar', 'Guest Lecture', 'Industrial Visit', 'Cultural', 'Sports']
+    const mapType = (t?: string): EventItem['type'] => (t && (allowed as string[]).includes(t) ? (t as EventItem['type']) : 'Seminar')
+
+    const ev = json.event
+    const mapped: EventItem = {
+      id: ev.id,
+      type: mapType(ev.eventType),
+      title: ev.title,
+      description: ev.description,
+      date: ev.date,
+      time: ev.startTime,
+      venue: ev.venue,
+      eligibility: ev.eligibility,
+      fee: ev.fee,
+      registrationLink: ev.registrationLink,
+      image: ev.imageUrl ? { uri: ev.imageUrl } : undefined,
+      organizers: Array.isArray(ev.organizers)
+        ? ev.organizers.map(o => ({ name: o.orgName, subtitle: o.parentOrgName || '', icon: 'people' }))
+        : undefined,
+      creator: ev.publisher ? { name: ev.publisher.name || 'Publisher', subtitle: ev.publisher.department || '', icon: 'person' } : undefined,
+      contacts: Array.isArray(ev.contacts)
+        ? ev.contacts.map(c => ({ name: c.name, role: c.role, phone: c.phone, icon: 'person' }))
+        : undefined,
+    }
+
+    return mapped
+  },
+
+  
+  async fetchUserProfile(params?: { role: 'user' | 'publisher' }): Promise<UserProfile> {
+    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
+    if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
+      throw new Error('Missing API base URL configuration')
+    }
+    const isPublisher = params?.role === 'publisher'
+    const token = isPublisher ? await (async () => {
+      try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
+    })() : null
+    const resolvedToken = token ? (typeof token === 'string' ? token : (await token)) : null
+
+    const endpoint = params?.role === 'publisher' ? '/api/publisher/profile' : '/api/student/profile'
+    const resp = await fetch(`${String(baseUrl).replace(/\/$/, '')}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        ...(resolvedToken ? { Authorization: `Bearer ${resolvedToken}` } : {}),
+      },
+    })
+    if (!resp.ok) {
+      throw new Error(`Failed to load ${params?.role || 'user'} profile (${resp.status})`)
+    }
+    const json: { success: boolean; user?: { fullname?: string; role?: string; department?: string } } = await resp.json()
+    console.log('Profile API response:', json)
+    const user = json.user || {}
+    return {
+      name: user.fullname || 'Publisher',
+      role: user.role || (params?.role === 'publisher' ? 'Publisher' : 'User'),
+      department: user.department || '',
+      email: undefined,
+    }
+  },
 
   // Helper to derive status based on event dates/times
   // Rules:
@@ -139,39 +352,177 @@ export const mockApi = {
     return 'ongoing'
   },
 
-  async fetchPublisherEvents(status: 'upcoming' | 'ongoing' | 'past'): Promise<PublisherEvent[]> {
-    await delay(250)
-    // Derive a small set from searchEvents for demo purposes with pseudo status
-    const derived: PublisherEvent[] = mutableSearchEvents.slice(0, 8).map((e) => ({
+  //Fetching publisher events
+
+  async fetchPublisherEvents(): Promise<PublisherEvent[]> {
+    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
+    if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
+      throw new Error('Missing API base URL configuration')
+    }
+    const token = await (async () => {
+      try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
+    })()
+    const resolvedToken = typeof token === 'string' ? token : (await token)
+    const response = await fetch(`${String(baseUrl).replace(/\/$/, '')}/api/publisher/events`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        ...(resolvedToken ? { Authorization: `Bearer ${resolvedToken}` } : {}),
+      },
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to load publisher events (${response.status})`)
+    }
+    const json: { success: boolean; events: Array<{ id: string; title: string; description: string; date?: string; eventDepartment?: string; eventType?: string; imageUrl?: string }> } = await response.json()
+    console.log('Publisher events API response:', json)
+
+    const allowed: EventItem['type'][] = ['Workshop', 'Seminar', 'Guest Lecture', 'Industrial Visit', 'Cultural', 'Sports']
+    const mapType = (t?: string): EventItem['type'] => (t && (allowed as string[]).includes(t) ? (t as EventItem['type']) : 'Seminar')
+
+    const deriveStatusFromDateOnly = (dateString?: string): 'upcoming' | 'ongoing' | 'past' => {
+      if (!dateString) return 'upcoming'
+      const d = new Date(dateString)
+      if (Number.isNaN(d.getTime())) return 'upcoming'
+      const now = new Date()
+      const endOfDay = new Date(d)
+      endOfDay.setHours(23, 59, 59, 999)
+      if (endOfDay.getTime() < now.getTime()) return 'past'
+      if (d.getTime() > now.getTime()) return 'upcoming'
+      return 'ongoing'
+    }
+
+    return (json.events || []).map((e) => ({
       id: e.id,
       title: e.title,
       date: e.date,
-      type: e.category,
-      imageUrl: e.image?.uri,
-      status: this.deriveStatusFromDates(e),
+      type: mapType(e.eventType),
+      imageUrl: e.imageUrl,
+      status: deriveStatusFromDateOnly(e.date),
       description: e.description,
-      venue: e.venue,
-      fee: e.fee,
+      venue: undefined,
+      fee: undefined,
     }))
-
-    return derived.filter((ev) => ev.status === status)
   },
 
-  /*
-  async fetchPublisherEvents(status: 'upcoming' | 'ongoing' | 'past') {
-  const { data } = await api.get('/publisher/events', { params: { status } });
-  return data;
-  } */
+  async updatePublisherEvent(id: string, dataObj: Record<string, any>, imageFile?: any): Promise<{ success: boolean; eventId?: string; message?: string }> {
+    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
+    if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
+      throw new Error('Missing API base URL configuration')
+    }
+    const token = await (async () => {
+      try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
+    })()
+    const resolvedToken = typeof token === 'string' ? token : (await token)
+
+    const form = new FormData()
+    if (imageFile) {
+      form.append('image', imageFile as any)
+    }
+
+    const cleanData = toBackendEventData(dataObj)
+    form.append('data', JSON.stringify(cleanData))
+
+    const response = await fetch(`${String(baseUrl).replace(/\/$/, '')}/api/publisher/events/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: {
+        ...(resolvedToken ? { Authorization: `Bearer ${resolvedToken}` } : {}),
+      },
+      body: form,
+    })
+    if (!response.ok) {
+      const message = `Failed to update event (${response.status})`
+      throw new Error(message)
+    }
+    const json = await response.json()
+    console.log('Update publisher event response:', json)
+    return json
+  },
+
+  async createPublisherEvent(dataObj: Record<string, any>, imageFile?: any): Promise<{ success: boolean; eventId?: string; message?: string }> {
+    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
+    if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
+      throw new Error('Missing API base URL configuration')
+    }
+    const token = await (async () => {
+      try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
+    })()
+    const resolvedToken = typeof token === 'string' ? token : (await token)
+
+    console.log('Creating publisher event with token:', resolvedToken ? 'Present' : 'Missing')
+
+    const form = new FormData()
+    if (imageFile) {
+      form.append('image', imageFile as any)
+    }
+    
+    // Log the data being sent
+    console.log('Data object being sent:', dataObj)
+    
+    // Transform payload to backend schema
+    const cleanData = toBackendEventData(dataObj)
+
+    form.append('data', JSON.stringify(cleanData))
+
+    const url = `${String(baseUrl).replace(/\/$/, '')}/api/publisher/events`
+    console.log('Making POST request to:', url)
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...(resolvedToken ? { Authorization: `Bearer ${resolvedToken}` } : {}),
+      },
+      body: form,
+    })
+    
+    console.log('Create event response status:', response.status)
+    
+    if (!(response.status === 201 || response.ok)) {
+      let errorMessage = `Failed to create event (${response.status})`
+      try {
+        const errorJson = await response.json()
+        if (errorJson.message) {
+          errorMessage = errorJson.message
+        }
+      } catch {
+        // If we can't parse the error response, use the default message
+      }
+      throw new Error(errorMessage)
+    }
+    
+    const json = await response.json()
+    console.log('Create publisher event response:', json)
+    return json
+  },
+
 
 async deleteEvent(eventId: string): Promise<boolean> {
-  await delay(250)
-  const idxSearch = mutableSearchEvents.findIndex((e) => e.id === eventId)
-  if (idxSearch >= 0) mutableSearchEvents.splice(idxSearch, 1)
+  const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
+  if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
+    throw new Error('Missing API base URL configuration')
+  }
+  const token = await (async () => {
+    try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
+  })()
+  const resolvedToken = typeof token === 'string' ? token : (await token)
 
-  const normalized = eventId.startsWith('h') ? eventId.slice(1) : eventId
-  const idxHome = mutableHomeEvents.findIndex((e) => e.id === normalized)
-  if (idxHome >= 0) mutableHomeEvents.splice(idxHome, 1)
-  return true
+  const resp = await fetch(`${String(baseUrl).replace(/\/$/, '')}/api/publisher/events/${encodeURIComponent(eventId)}`, {
+    method: 'DELETE',
+    headers: {
+      Accept: 'application/json',
+      ...(resolvedToken ? { Authorization: `Bearer ${resolvedToken}` } : {}),
+    },
+  })
+
+  let success = resp.ok
+  try {
+    const json: any = await resp.json()
+    if (typeof json?.success === 'boolean') success = json.success
+    console.log('Delete publisher event response:', json)
+  } catch {
+    // ignore JSON parse errors; rely on HTTP status
+  }
+
+  return success
 },
   /*
   async deleteEvent(eventId: string): Promise<boolean> {
@@ -179,174 +530,41 @@ async deleteEvent(eventId: string): Promise<boolean> {
   return status >= 200 && status < 300;
   } */
 
-  async listSearchEvents(): Promise<SearchEvent[]> {
-    await delay(200)
-    return mutableSearchEvents
+  async listSearchEvents(params?: { dept?: string; type?: string; name?: string }): Promise<SearchEvent[]> {
+    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
+    if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
+      throw new Error('Missing API base URL configuration')
+    }
+    const url = new URL(`${String(baseUrl).replace(/\/$/, '')}/api/student/events`)
+    if (params?.dept) url.searchParams.set('dept', params.dept)
+    if (params?.type) url.searchParams.set('type', params.type)
+    if (params?.name) url.searchParams.set('name', params.name)
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to search events (${response.status})`)
+    }
+    const json: { success: boolean; events: Array<{ id: string; imageUrl?: string; title: string; description: string; date?: string; startTime?: string; eventType?: string }> } = await response.json()
+    console.log('Search events API response:', json)
+
+    const allowed: EventItem['type'][] = ['Workshop', 'Seminar', 'Guest Lecture', 'Industrial Visit', 'Cultural', 'Sports']
+    const mapType = (t?: string): EventItem['type'] => (t && (allowed as string[]).includes(t) ? (t as EventItem['type']) : 'Seminar')
+    const department: SearchEvent['department'] = (params?.dept as SearchEvent['department']) || 'CSE'
+
+    return (json.events || []).map((e) => ({
+      id: e.id,
+      title: e.title,
+      description: e.description,
+      category: mapType(e.eventType),
+      department,
+      image: e.imageUrl ? { uri: e.imageUrl } : undefined,
+      date: e.date,
+      time: e.startTime,
+    }))
   },
-
-  async getEventById(id: string): Promise<(EventItem | SearchEvent) | null> {
-    await delay(150)
-    return getEventById(id)
-  },
-
-  async createEvent(payload: UpsertEventPayload): Promise<{ id: string }> {
-    await delay(300)
-    const id = genId('e')
-    const newSearchEvent: SearchEvent = {
-      id,
-      title: payload.title,
-      description: payload.description,
-      category: payload.type,
-      department: 'CSE',
-      image: payload.imageUrl ? { uri: payload.imageUrl } : undefined,
-      date: payload.date,
-      time: payload.startTime,
-      venue: payload.venue,
-      eligibility: payload.eligibility,
-      fee: payload.fee,
-      registrationLink: payload.registrationLink,
-      organizers: (payload.organizers || []).map((o) => ({ name: o.eventOrganizer, subtitle: o.parentOrganization, icon: 'people' })),
-      contacts: (payload.contacts || []).map((c) => ({ ...c, icon: 'person' })),
-    }
-    mutableSearchEvents.unshift(newSearchEvent)
-    return { id }
-  },
-
-  /*{Example for using API}
-
-  async listSearchEvents(): Promise<SearchEvent[]> {
-  const { data } = await api.get('/events/search');
-  async updateEvent(id: string, payload: UpsertEventPayload): Promise<boolean> {
-    await delay(350)
-    const sIdx = searchEvents.findIndex((e) => e.id === id)
-    if (sIdx >= 0) {
-      const curr = searchEvents[sIdx]
-      searchEvents[sIdx] = {
-        ...curr,
-        title: payload.title ?? curr.title,
-        description: payload.description ?? curr.description,
-        category: payload.type ?? curr.category,
-        image: payload.imageUrl ? { uri: payload.imageUrl } : curr.image,
-        date: payload.date ?? curr.date,
-        time: payload.startTime ?? curr.time,
-        venue: payload.venue ?? curr.venue,
-        eligibility: payload.eligibility ?? curr.eligibility,
-        fee: payload.fee ?? curr.fee,
-        registrationLink: payload.registrationLink ?? curr.registrationLink,
-        organizers: payload.organizers
-          ? payload.organizers.map((o) => ({ name: o.eventOrganizer, subtitle: o.parentOrganization, icon: 'people' }))
-          : curr.organizers,
-        contacts: payload.contacts
-          ? payload.contacts.map((c) => ({ ...c, icon: 'person' }))
-          : curr.contacts,
-      }
-    }
-
-    const normalized = id.startsWith('h') ? id.slice(1) : id
-    const hIdx = homeEvents.findIndex((e) => e.id === normalized)
-    if (hIdx >= 0) {
-      const curr = homeEvents[hIdx]
-      homeEvents[hIdx] = {
-        ...curr,
-        title: payload.title ?? curr.title,
-        description: payload.description ?? curr.description,
-        type: payload.type ?? curr.type,
-        image: payload.imageUrl ? { uri: payload.imageUrl } : curr.image,
-        date: payload.date ?? curr.date,
-        time: payload.startTime ?? curr.time,
-        venue: payload.venue ?? curr.venue,
-        eligibility: payload.eligibility ?? curr.eligibility,
-        fee: payload.fee ?? curr.fee,
-        registrationLink: payload.registrationLink ?? curr.registrationLink,
-        organizers: payload.organizers
-          ? payload.organizers.map((o) => ({ name: o.eventOrganizer, subtitle: o.parentOrganization, icon: 'people' }))
-          : curr.organizers,
-        creator: curr.creator ?? { name: 'Publisher User', subtitle: 'CSE Department', icon: 'person' },
-        contacts: payload.contacts
-          ? payload.contacts.map((c) => ({ ...c, icon: 'person' }))
-          : curr.contacts,
-      }
-    }
-
-    return true
-  },    title: payload.title,
-    description: payload.description,
-    type: payload.type,
-    date: payload.date,
-    startTime: payload.startTime,
-    endTime: payload.endTime,
-    mode: payload.mode,
-    venue: payload.venue,
-    fee: payload.fee,
-    organizers: payload.organizers,
-    contacts: payload.contacts,
-    registrationLink: payload.registrationLink,
-    imageUrl: payload.imageUrl,
-  };
-  const { data } = await api.post('/events', body);
-  return { id: data.id };
-  } */
-
-  async updateEvent(id: string, payload: UpsertEventPayload): Promise<boolean> {
-    await delay(350)
-    const sIdx = mutableSearchEvents.findIndex((e) => e.id === id)
-    if (sIdx >= 0) {
-      const curr = mutableSearchEvents[sIdx]
-      mutableSearchEvents[sIdx] = {
-        ...curr,
-        title: payload.title || curr.title,
-        description: payload.description || curr.description,
-        category: payload.type || curr.category,
-        image: payload.imageUrl ? { uri: payload.imageUrl } : curr.image,
-        date: payload.date ?? curr.date,
-        time: payload.startTime ?? curr.time,
-        venue: payload.venue ?? curr.venue,
-        eligibility: payload.eligibility ?? curr.eligibility,
-        fee: payload.fee ?? curr.fee,
-        registrationLink: payload.registrationLink ?? curr.registrationLink,
-        organizers: payload.organizers
-          ? payload.organizers.map((o) => ({ name: o.eventOrganizer, subtitle: o.parentOrganization, icon: 'people' }))
-          : curr.organizers,
-        contacts: payload.contacts
-          ? payload.contacts.map((c) => ({ ...c, icon: 'person' }))
-          : curr.contacts,
-      }
-    }
-
-    const normalized = id.startsWith('h') ? id.slice(1) : id
-    const hIdx = mutableHomeEvents.findIndex((e) => e.id === normalized)
-    if (hIdx >= 0) {
-      const curr = mutableHomeEvents[hIdx]
-      mutableHomeEvents[hIdx] = {
-        ...curr,
-        title: payload.title || curr.title,
-        description: payload.description || curr.description,
-        type: payload.type || curr.type,
-        image: payload.imageUrl ? { uri: payload.imageUrl } : curr.image,
-        date: payload.date ?? curr.date,
-        time: payload.startTime ?? curr.time,
-        venue: payload.venue ?? curr.venue,
-        eligibility: payload.eligibility ?? curr.eligibility,
-        fee: payload.fee ?? curr.fee,
-        registrationLink: payload.registrationLink ?? curr.registrationLink,
-        organizers: payload.organizers
-          ? payload.organizers.map((o) => ({ name: o.eventOrganizer, subtitle: o.parentOrganization, icon: 'people' }))
-          : curr.organizers,
-        creator: curr.creator ?? { name: 'Publisher User', subtitle: 'CSE Department', icon: 'person' },
-        contacts: payload.contacts
-          ? payload.contacts.map((c) => ({ ...c, icon: 'person' }))
-          : curr.contacts,
-      }
-    }
-
-    return true
-  },
-
-  /*
-  async updateEvent(id: string, payload: UpsertEventPayload): Promise<boolean> {
-  const { status } = await api.put(`/events/${id}`, payload);
-  return status >= 200 && status < 300;
-  } */
 }
 
 export default mockApi

@@ -4,6 +4,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome5'
 import { router } from 'expo-router'
 import { useAuth } from '../contexts/AuthContext'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 
 //Themed Components
@@ -29,16 +30,17 @@ const Login = () => {
 
     try {
       setLoading(true)
-      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL
+      const baseUrl =
+        process.env.EXPO_PUBLIC_API_BASE_URL ||
+        process.env.EXPO_PUBLIC_API_URL
       if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
         throw new Error('Missing API base URL configuration')
       }
 
-      const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/auth/login`, {
+      const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ registerNumber: registerNumber.trim(), password: password.trim() })
+        body: JSON.stringify({ username: registerNumber.trim(), password: password.trim() })
       })
 
       if (!response.ok) {
@@ -50,33 +52,54 @@ const Login = () => {
         throw new Error(message)
       }
 
-      type LoginSuccess = {
-        user: {
-          role: 'user' | 'publisher'
-          name?: string
-          registerNumber?: string
-          email?: string
-          department?: string
-        }
-        // token is set via httpOnly cookie by server; not used here
+      type LoginResponse = {
+        success: boolean
+        token: string
+        userRole: string
+        message?: string
       }
 
-      const data: LoginSuccess = await response.json()
-      const role = data?.user?.role
-      if (role !== 'user' && role !== 'publisher') {
-        throw new Error('Unexpected role received')
+      const data: LoginResponse = await response.json()
+      console.log('Login API response:', data)
+
+      if (!data.success) {
+        throw new Error(data.message || 'Invalid credentials')
+      }
+
+      const mappedRole = data.userRole === 'publisher' ? 'publisher' : 'user'
+
+      if (mappedRole === 'publisher' && data.token) {
+        try {
+          await AsyncStorage.setItem('auth:publisher:jwt', data.token)
+        } catch (e) {
+          console.warn('Failed to persist publisher JWT token', e)
+        }
       }
 
       await signIn({
-        role,
-        name: data.user.name,
-        registerNumber: data.user.registerNumber ?? registerNumber.trim(),
-        email: data.user.email,
-        department: data.user.department,
+        role: mappedRole,
+        registerNumber: registerNumber.trim(),
       })
       router.replace('/')
     } catch (err: any) {
+      console.error('Login error:', err)
       setAuthError(err?.message || 'Login failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGuestLogin = async () => {
+    try {
+      setLoading(true)
+      await signIn({
+        role: 'user',
+        name: 'Guest User',
+      })
+      router.replace('/')
+    } catch (err: any) {
+      console.error('Guest login error:', err)
+      setAuthError(err?.message || 'Guest login failed')
     } finally {
       setLoading(false)
     }
@@ -140,6 +163,16 @@ const Login = () => {
       )}
     </Pressable>
 
+    <Spacer height={20}/>
+
+    <Pressable disabled={loading} onPress={handleGuestLogin} style={({pressed}) => [styles.guestBtn, pressed && styles.pressed, loading && styles.btnDisabled] }>
+      {loading ? (
+        <ActivityIndicator color="#9e0202" />
+      ) : (
+        <Text style={styles.guestBtnText}>Continue as Guest</Text>
+      )}
+    </Pressable>
+
     <Spacer height={30}/>
 
     <Text style={{color:'#9e0202'}}> Forgot Password?</Text>
@@ -199,5 +232,18 @@ const styles = StyleSheet.create({
     },
     pressed:{
       opacity: 0.7
+    },
+    guestBtn:{
+      backgroundColor: '#e6e6e6',
+      width: '80%',
+      borderRadius: 10,
+      padding: 15,
+      borderWidth: 1,
+      borderColor: '#65758c',
+    },
+    guestBtnText:{
+      textAlign:"center",
+      fontWeight:"bold",
+      color: '#65758c'
     }
 })

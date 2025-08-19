@@ -28,30 +28,29 @@ const PublisherHome = () => {
   const [events, setEvents] = useState<SearchEvent[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Fetch events on component mount
+  // Fetch and search via API when filters/search change
   React.useEffect(() => {
-    const fetchEvents = async () => {
+    let mounted = true
+    setLoading(true)
+   ;(async () => {
       try {
-        const fetchedEvents = await mockApi.listSearchEvents()
-        setEvents(fetchedEvents)
+        const params = {
+          dept: selectedDepartment !== 'All Departments' ? selectedDepartment : undefined,
+          type: selectedCategory !== 'All' ? selectedCategory : undefined,
+          name: searchQuery.trim() !== '' ? searchQuery.trim() : undefined,
+        }
+        const fetched = await mockApi.listSearchEvents(params)
+        if (mounted) setEvents(fetched)
       } catch (error) {
         console.error('Error fetching events:', error)
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
-    }
-    fetchEvents()
-  }, [])
+    })()
+    return () => { mounted = false }
+  }, [searchQuery, selectedDepartment, selectedCategory])
 
-  const filtered = useMemo(() => {
-    return events.filter((e) => {
-      const matchesQuery = `${e.title} ${e.description}`.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesDept =
-        selectedDepartment === 'All Departments' || e.department === selectedDepartment
-      const matchesCat = selectedCategory === 'All' || e.category === selectedCategory
-      return matchesQuery && matchesDept && matchesCat
-    })
-  }, [searchQuery, selectedDepartment, selectedCategory, events])
+  const filtered = events
 
   const handleEventPress = (eventId: string) => {
     router.push({ pathname: '/(dashboard-publisher)/edit-event', params: { id: eventId } })

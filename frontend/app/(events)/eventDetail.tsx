@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View, Image, Pressable, ActivityIndicator, Linking, Alert } from 'react-native'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useLocalSearchParams } from 'expo-router'
-import { type EventItem, type SearchEvent, getEventById } from '../data/events'
+import { type EventItem, type SearchEvent } from '../data/events'
 import { mockApi } from '../services/mockApi'
 
 type Params = {
@@ -40,7 +40,7 @@ export default function EventDetail() {
     ;(async () => {
       try {
         if (!params.id) return
-        const data = await getEventById(params.id)
+        const data = await mockApi.getStudentEventById(params.id)
         if (isMounted) setEvent(data)
       } catch (error) {
         console.error('Failed to fetch event:', error)
