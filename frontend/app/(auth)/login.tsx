@@ -5,6 +5,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome5'
 import { router } from 'expo-router'
 import { useAuth } from '../contexts/AuthContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { getApiBaseUrl } from '../../src/config/api'
 
 
 //Themed Components
@@ -21,6 +22,8 @@ const Login = () => {
   const [loading, setLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
 
+  // Using centralized API configuration from src/config/api
+
   const handleSubmit = async () => {
     setSubmitAttempted(true)
     setAuthError(null)
@@ -30,14 +33,8 @@ const Login = () => {
 
     try {
       setLoading(true)
-      const baseUrl =
-        process.env.EXPO_PUBLIC_API_BASE_URL ||
-        process.env.EXPO_PUBLIC_API_URL
-      if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
-        throw new Error('Missing API base URL configuration')
-      }
-
-      const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/login`, {
+      const baseUrl = getApiBaseUrl()
+      const response = await fetch(`${baseUrl}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: registerNumber.trim(), password: password.trim() })

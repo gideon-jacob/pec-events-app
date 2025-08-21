@@ -1,5 +1,6 @@
 import { homeEvents, searchEvents, getEventById, type EventItem, type SearchEvent } from '../data/events'
 import { withCache, invalidateCacheByPrefix, TWENTY_HOURS_MS } from './cache'
+import { getApiBaseUrl } from '../../src/config/api';
 
 // Simple in-memory mock API layer for future backend integration
 // Replace these implementations with real HTTP calls when backend is ready.
@@ -170,11 +171,8 @@ export const mockApi = {
   
   async listStudentHomeEvents(): Promise<EventItem[]> {
     return withCache<EventItem[]>('student:events:list', TWENTY_HOURS_MS, async () => {
-      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
-      if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
-        throw new Error('Missing API base URL configuration')
-      }
-      const response = await fetch(`${String(baseUrl).replace(/\/$/, '')}/api/student/events`, {
+      const baseUrl = await getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/student/events`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
       })
@@ -198,11 +196,8 @@ export const mockApi = {
 
   async getStudentEventById(id: string): Promise<(EventItem | SearchEvent) | null> {
     return withCache<(EventItem | SearchEvent) | null>(`student:events:${id}`, TWENTY_HOURS_MS, async () => {
-      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
-      if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
-        throw new Error('Missing API base URL configuration')
-      }
-      const response = await fetch(`${String(baseUrl).replace(/\/$/, '')}/api/student/events/${encodeURIComponent(id)}`, {
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/student/events/${encodeURIComponent(id)}`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
       })
@@ -340,10 +335,7 @@ export const mockApi = {
   async fetchUserProfile(params?: { role: 'user' | 'publisher' }): Promise<UserProfile> {
     const roleKey = params?.role === 'publisher' ? 'publisher' : 'user'
     return withCache<UserProfile>(`profile:${roleKey}`, TWENTY_HOURS_MS, async () => {
-      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
-      if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
-        throw new Error('Missing API base URL configuration')
-      }
+      const baseUrl = getApiBaseUrl();
       const isPublisher = params?.role === 'publisher'
       const token = isPublisher ? await (async () => {
         try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
@@ -351,7 +343,7 @@ export const mockApi = {
       const resolvedToken = token ? (typeof token === 'string' ? token : (await token)) : null
 
       const endpoint = params?.role === 'publisher' ? '/api/publisher/profile' : '/api/student/profile'
-      const resp = await fetch(`${String(baseUrl).replace(/\/$/, '')}${endpoint}`, {
+      const resp = await fetch(`${baseUrl}${endpoint}`, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
@@ -446,15 +438,12 @@ export const mockApi = {
 
   async fetchPublisherEvents(): Promise<PublisherEvent[]> {
     return withCache<PublisherEvent[]>(`publisher:events:list`, TWENTY_HOURS_MS, async () => {
-      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
-      if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
-        throw new Error('Missing API base URL configuration')
-      }
+      const baseUrl = getApiBaseUrl();
       const token = await (async () => {
         try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
       })()
       const resolvedToken = typeof token === 'string' ? token : (await token)
-      const response = await fetch(`${String(baseUrl).replace(/\/$/, '')}/api/publisher/events`, {
+      const response = await fetch(`${baseUrl}/api/publisher/events`, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
@@ -495,10 +484,7 @@ export const mockApi = {
   },
 
   async updatePublisherEvent(id: string, dataObj: Record<string, any>, imageFile?: any): Promise<{ success: boolean; eventId?: string; message?: string }> {
-    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
-    if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
-      throw new Error('Missing API base URL configuration')
-    }
+    const baseUrl = getApiBaseUrl();
     const token = await (async () => {
       try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
     })()
@@ -513,7 +499,7 @@ export const mockApi = {
     const cleanData = toBackendEventData(dataObj)
     form.append('data', JSON.stringify(cleanData))
 
-    const response = await fetch(`${String(baseUrl).replace(/\/$/, '')}/api/publisher/events/${encodeURIComponent(id)}`, {
+    const response = await fetch(`${baseUrl}/api/publisher/events/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: {
         ...(resolvedToken ? { Authorization: `Bearer ${resolvedToken}` } : {}),
@@ -533,34 +519,25 @@ export const mockApi = {
   },
 
   async createPublisherEvent(dataObj: Record<string, any>, imageFile?: any): Promise<{ success: boolean; eventId?: string; message?: string }> {
-    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
-    if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
-      throw new Error('Missing API base URL configuration')
-    }
+    const baseUrl = getApiBaseUrl();
     const token = await (async () => {
       try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
     })()
     const resolvedToken = typeof token === 'string' ? token : (await token)
 
     const form = new FormData()
-    
-    // Add image file if it exists
     if (imageFile) {
       const resolved = await resolveFileForFormData(imageFile)
-      if (resolved) {
-        appendFileWithName(form, 'image', resolved)
-      } else {
-        console.warn('Failed to resolve imageFile')
-      }
+      if (resolved) appendFileWithName(form, 'image', resolved)
     }
-    
-    // Transform payload to backend schema
+
+    // Clean the data object to match backend expectations
     const cleanData = toBackendEventData(dataObj);
-    
+
     // Append the data as a JSON string
     form.append('data', JSON.stringify(cleanData));
 
-    const url = `${String(baseUrl).replace(/\/$/, '')}/api/publisher/events`
+    const url = `${baseUrl}/api/publisher/events`
 
     const response = await fetch(url, {
       method: 'POST',
@@ -593,16 +570,13 @@ export const mockApi = {
 
 
 async deleteEvent(eventId: string): Promise<boolean> {
-  const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
-  if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
-    throw new Error('Missing API base URL configuration')
-  }
+  const baseUrl = getApiBaseUrl();
   const token = await (async () => {
     try { return (await import('@react-native-async-storage/async-storage')).default.getItem('auth:publisher:jwt') } catch { return null }
   })()
   const resolvedToken = typeof token === 'string' ? token : (await token)
 
-  const resp = await fetch(`${String(baseUrl).replace(/\/$/, '')}/api/publisher/events/${encodeURIComponent(eventId)}`, {
+  const resp = await fetch(`${baseUrl}/api/publisher/events/${encodeURIComponent(eventId)}`, {
     method: 'DELETE',
     headers: {
       Accept: 'application/json',
@@ -633,11 +607,7 @@ async deleteEvent(eventId: string): Promise<boolean> {
   } */
 
   async listSearchEvents(params?: { dept?: string; type?: string; name?: string }): Promise<SearchEvent[]> {
-    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://3lgkw9cxpk.execute-api.ap-south-1.amazonaws.com/default'
-    
-    if (!baseUrl) {
-      throw new Error('API base URL is not configured. Please set EXPO_PUBLIC_API_BASE_URL or EXPO_PUBLIC_API_URL environment variable.')
-    }
+    const baseUrl = getApiBaseUrl();
     
     try {
       const url = new URL(`${baseUrl}/api/student/events`)

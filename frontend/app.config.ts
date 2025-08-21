@@ -22,6 +22,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   const envVersion =
     process.env.APP_VERSION || process.env.EXPO_PUBLIC_APP_VERSION;
+    
+  // Set production API URL - replace with your actual production API URL
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL || 
+                process.env.EXPO_PUBLIC_API_BASE_URL ||
+                'https://your-production-api-url.com'; // Replace with your production API URL
 
   const resolvedConfig: ExpoConfig = {
     ...config,
@@ -31,6 +36,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     // Prefer explicitly provided version, then env, then package.json version
     version: config.version ?? envVersion ?? packageJson.version,
     plugins,
+    extra: {
+      ...config.extra,
+      // Make the API URL available in the app
+      apiUrl,
+    },
   };
 
   return resolvedConfig;
