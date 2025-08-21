@@ -1,7 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
-import React, { useEffect } from 'react'
-import TestRefComponent from './test-ref'
-import { Link, Redirect, router } from 'expo-router'
+import React from 'react'
+import { Link, Redirect } from 'expo-router'
 import Spacer from '@/components/spacer'
 import { useAuth } from './contexts/AuthContext'
 
@@ -37,10 +36,6 @@ const Home = () => {
       <Link href="/login">Login Page</Link>
 
       <Spacer/>
-
-      {/* <Link href='/studentHome'>Student Dashboard</Link> */}
-
-      <TestRefComponent />
     </View>
   )
 }

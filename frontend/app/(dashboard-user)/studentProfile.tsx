@@ -28,8 +28,7 @@ const StudentProfile = () => {
     return () => { mounted = false }
   }, [])
   const handleChangePassword = () => {
-    // TODO: navigate to change password
-    console.log('Change password pressed')
+    // TODO: Implement change password functionality
   }
 
   const handleLogout = async () => {
@@ -80,10 +79,10 @@ const StudentProfile = () => {
       </View>
 
       {/* Actions */}
-      <Pressable style={styles.action} onPress={handleChangePassword}>
+      {/* <Pressable style={styles.action} onPress={handleChangePassword}>
         <Text style={styles.actionText}>Change Password</Text>
         <Icon name="chevron-forward" size={18} color="#9e0202" />
-      </Pressable>
+      </Pressable> */}
 
       <Pressable style={styles.action} onPress={handleLogout}>
         <Text style={styles.actionText}>Log Out</Text>

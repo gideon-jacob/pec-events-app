@@ -4,10 +4,12 @@ export type EventItem = {
   title: string
   date?: string
   time?: string
+  endTime?: string
   description: string
   venue?: string
   eligibility?: string
   fee?: string
+  mode?: 'Online' | 'Offline' | 'Hybrid'
   image?: { uri: string }
   // Additional rich details for edit-event page
   registrationLink?: string
@@ -121,6 +123,7 @@ export type SearchEvent = {
   venue?: string
   eligibility?: string
   fee?: string
+  mode?: 'Online' | 'Offline' | 'Hybrid'
   registrationLink?: string
   organizers?: { name: string; subtitle: string; icon: string }[]
   creator?: { name: string; subtitle: string; icon: string }

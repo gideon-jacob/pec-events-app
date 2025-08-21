@@ -39,13 +39,39 @@ const PublisherProfile = () => {
     }
   }, [])
 
-  const fetchEvents = useCallback(async (status: 'upcoming' | 'ongoing' | 'past') => {
+  const fetchEvents = useCallback(async (tab: 'upcoming' | 'past') => {
     try {
       setLoading(true)
-      const eventsData = await mockApi.fetchPublisherEvents()
-      // Filter client-side to maintain the tab behavior
-      const filtered = eventsData.filter(e => e.status === status)
-      setEvents(filtered)
+      // Fetch all events without filtering
+      const allEvents = await mockApi.fetchPublisherEvents()
+      const now = new Date()
+      
+      // Filter events based on current date
+      const filteredEvents = allEvents.filter(event => {
+        if (!event.date) return false
+        
+        const eventDate = new Date(event.date)
+        if (isNaN(eventDate.getTime())) return false
+        
+        // Set time to end of day for date-only comparison
+        const endOfEventDay = new Date(eventDate)
+        endOfEventDay.setHours(23, 59, 59, 999)
+        
+        return tab === 'upcoming' 
+          ? endOfEventDay >= now  // For upcoming: event end is in the future
+          : endOfEventDay < now   // For past: event end is in the past
+      })
+      
+      // Sort the filtered events
+      const sortedEvents = [...filteredEvents].sort((a, b) => {
+        const dateA = a.date ? new Date(a.date).getTime() : 0
+        const dateB = b.date ? new Date(b.date).getTime() : 0
+        return tab === 'upcoming' 
+          ? dateA - dateB  // Soonest first for upcoming
+          : dateB - dateA  // Most recent first for past
+      })
+      
+      setEvents(sortedEvents)
       setError(null)
     } catch (err) {
       setError('Failed to load events')

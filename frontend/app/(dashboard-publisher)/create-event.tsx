@@ -2,15 +2,47 @@ import React, { useState } from 'react'
 import { StyleSheet, View, TextInput, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, Text, Image, Modal, Alert } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
 import { Ionicons } from '@expo/vector-icons'
-import ThemedView from '../components/ThemedView'
-import ThemedText from '../components/ThemedText'
-import Spacer from '../components/spacer'
-import { Colors } from '../constants/Colors'
+import ThemedView from '../../components/ThemedView'
+import ThemedText from '../../components/ThemedText'
+import Spacer from '../../components/spacer'
+import { mockApi } from '../services/mockApi'
+import { router } from 'expo-router'
+import { Picker } from '@react-native-picker/picker'
 
-const emptyOrganizer = () => ({ parentOrganization: '', eventOrganizer: '' })
-const emptyContact = () => ({ name: '', role: '', contactNumber: '' })
+type mode = 'Online' | 'Offline' | 'Hybrid'
+type EventType = 'Seminar' | 'Workshop' | 'Guest Lecture' | 'Industrial Visit' | 'Cultural' | 'Sports'
 
-const snapToFiveMinutes = (date) => {
+type Organizer = {
+  parentOrganization: string
+  eventOrganizer: string
+}
+
+type Contact = {
+  name: string
+  role: string
+  contactNumber: string
+}
+
+type DayCell = {
+  date: number
+  month: number
+  year: number
+  isCurrentMonth: boolean
+}
+
+type PickedFile = {
+  uri: string
+  name?: string
+  size?: number
+  mimeType?: string
+  type?: string
+  data?: Blob
+}
+
+const emptyOrganizer = (): Organizer => ({ parentOrganization: '', eventOrganizer: '' })
+const emptyContact = (): Contact => ({ name: '', role: '', contactNumber: '' })
+
+const snapToFiveMinutes = (date: Date) => {
   const rounded = new Date(date)
   const minutes = rounded.getMinutes()
   const nearest = Math.round(minutes / 5) * 5
@@ -25,15 +57,14 @@ const snapToFiveMinutes = (date) => {
   return rounded
 }
 
-const getDaysInMonth = (date) => {
+const getDaysInMonth = (date: Date): DayCell[] => {
   const year = date.getFullYear()
   const month = date.getMonth()
   const firstDay = new Date(year, month, 1)
-  const lastDay = new Date(year, month + 1, 0)
   const startDate = new Date(firstDay)
   startDate.setDate(startDate.getDate() - firstDay.getDay())
   
-  const days = []
+  const days: DayCell[] = []
   for (let i = 0; i < 42; i++) {
     const currentDate = new Date(startDate)
     currentDate.setDate(startDate.getDate() + i)
@@ -49,36 +80,36 @@ const getDaysInMonth = (date) => {
 }
 
 const PublisherCreateEvent = () => {
-  const [eventTitle, setEventTitle] = useState('')
-  const [eventDescription, setEventDescription] = useState('')
-  const [eligibility, setEligibility] = useState('')
-  const [date, setDate] = useState('') // e.g., dd-mm-yyyy
-  const [startTime, setStartTime] = useState('') // e.g., HH:MM
-  const [endTime, setEndTime] = useState('')
-  const [mode, setMode] = useState('')
-  const [venue, setVenue] = useState('')
-  const [entryFee, setEntryFee] = useState('')
-  const [organizers, setOrganizers] = useState([emptyOrganizer()])
-  const [contacts, setContacts] = useState([emptyContact()])
-  const [registrationLink, setRegistrationLink] = useState('')
-  const [activeTab, setActiveTab] = useState('create') // Track active navigation tab
-  const [showDatePicker, setShowDatePicker] = useState(false)
-  const [selectedDate, setSelectedDate] = useState(new Date())
-  const [calendarMonth, setCalendarMonth] = useState(new Date())
-  const [showTimePicker, setShowTimePicker] = useState(false)
-  const [selectedTime, setSelectedTime] = useState(snapToFiveMinutes(new Date()))
-  const [timePickerType, setTimePickerType] = useState('start') // 'start' or 'end'
-  const [uploadedFile, setUploadedFile] = useState(null)
-  const [isDateConfirmed, setIsDateConfirmed] = useState(false)
+  const [eventTitle, setEventTitle] = useState<string>('')
+  const [eventDescription, setEventDescription] = useState<string>('')
+  const [eligibility, setEligibility] = useState<string>('')
+  const [date, setDate] = useState<string>('') // e.g., dd-mm-yyyy
+  const [startTime, setStartTime] = useState<string>('') // e.g., HH:MM
+  const [endTime, setEndTime] = useState<string>('')
+  const [mode, setMode] = useState<string>('')
+  const [eventType, setEventType] = useState<string>('Seminar')
+  const [venue, setVenue] = useState<string>('')
+  const [entryFee, setEntryFee] = useState<string>('')
+  const [organizers, setOrganizers] = useState<Organizer[]>([emptyOrganizer()])
+  const [contacts, setContacts] = useState<Contact[]>([emptyContact()])
+  const [registrationLink, setRegistrationLink] = useState<string>('')
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false)
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date())
+  const [showTimePicker, setShowTimePicker] = useState<boolean>(false)
+  const [selectedTime, setSelectedTime] = useState<Date>(snapToFiveMinutes(new Date()))
+  const [timePickerType, setTimePickerType] = useState<'start' | 'end'>('start') // 'start' or 'end'
+  const [uploadedFile, setUploadedFile] = useState<PickedFile | null>(null)
+  const [isDateConfirmed, setIsDateConfirmed] = useState<boolean>(false)
 
   const handleAddOrganizer = () => setOrganizers(prev => [...prev, emptyOrganizer()])
-  const handleRemoveOrganizer = (indexToRemove) => setOrganizers(prev => prev.filter((_, idx) => idx !== indexToRemove))
-  const handleUpdateOrganizer = (indexToUpdate, field, value) =>
+  const handleRemoveOrganizer = (indexToRemove: number) => setOrganizers(prev => prev.filter((_, idx) => idx !== indexToRemove))
+  const handleUpdateOrganizer = (indexToUpdate: number, field: keyof Organizer, value: string) =>
     setOrganizers(prev => prev.map((item, idx) => idx === indexToUpdate ? { ...item, [field]: value } : item))
 
   const handleAddContact = () => setContacts(prev => [...prev, emptyContact()])
-  const handleRemoveContact = (indexToRemove) => setContacts(prev => prev.filter((_, idx) => idx !== indexToRemove))
-  const handleUpdateContact = (indexToUpdate, field, value) =>
+  const handleRemoveContact = (indexToRemove: number) => setContacts(prev => prev.filter((_, idx) => idx !== indexToRemove))
+  const handleUpdateContact = (indexToUpdate: number, field: keyof Contact, value: string) =>
     setContacts(prev => prev.map((item, idx) => idx === indexToUpdate ? { ...item, [field]: value } : item))
 
   const handleDatePress = () => {
@@ -114,7 +145,7 @@ const PublisherCreateEvent = () => {
     setShowDatePicker(false)
   }
 
-  const handleTimePress = (type) => {
+  const handleTimePress = (type: 'start' | 'end') => {
     setTimePickerType(type)
     setSelectedTime((prev) => snapToFiveMinutes(prev))
     setShowTimePicker(true)
@@ -158,37 +189,74 @@ const PublisherCreateEvent = () => {
 
         // Check file type
         const allowedTypes = ['image/jpeg', 'image/png', 'image/gif']
-        if (!allowedTypes.includes(file.mimeType)) {
+        if (!file.mimeType || !allowedTypes.includes(file.mimeType)) {
           Alert.alert('Invalid File Type', 'Please select a PNG, JPG, or GIF file.')
           return
         }
 
-        setUploadedFile(file)
-        console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.mimeType)
+        // Create a file object with the necessary properties for FormData
+        const fileWithData = {
+          uri: file.uri,
+          name: file.name || `image-${Date.now()}.jpg`,
+          type: file.mimeType || 'image/jpeg',
+          mimeType: file.mimeType || 'image/jpeg', // Keep mimeType for compatibility
+        };
+
+        setUploadedFile(fileWithData);
       }
     } catch (error) {
-      console.error('Error picking document:', error)
-      Alert.alert('Error', 'Failed to select file. Please try again.')
+      console.error('Error picking document:', error);
+      Alert.alert('Error', 'Failed to select file. Please try again.');
     }
   }
 
-  const handlePublish = () => {
-    const payload = {
-      eventTitle,
-      eventDescription,
-      eligibility,
-      date,
-      startTime,
-      endTime,
-      mode,
-      venue,
-      entryFee,
-      organizers,
-      contacts,
-      registrationLink,
+  const handlePublish = async () => {
+    try {
+      if (!eventTitle.trim() || !eventDescription.trim()) {
+        Alert.alert('Missing fields', 'Please fill the required fields (Title, Description)')
+        return
+      }
+
+      const payload = {
+        title: eventTitle,
+        description: eventDescription,
+        eligibility,
+        date,
+        startTime,
+        endTime,
+        mode,
+        venue,
+        fee: entryFee,
+        organizers,
+        contacts: contacts.map(c => ({ name: c.name, role: c.role, phone: c.contactNumber })),
+        registrationLink,
+        type: eventType as any,
+      }
+
+      // Prepare the file for upload with actual bytes where possible
+      let imagePart: any | undefined
+      if (uploadedFile) {
+        // Ensure we have the basic file structure needed
+        imagePart = {
+          uri: uploadedFile.uri,
+          name: uploadedFile.name || `image-${Date.now()}.jpg`,
+          type: uploadedFile.type || uploadedFile.mimeType || 'image/jpeg',
+          mimeType: uploadedFile.mimeType || uploadedFile.type || 'image/jpeg', // Keep mimeType for compatibility
+        }
+      } else {
+      }
+
+      const res = await mockApi.createPublisherEvent(payload, imagePart)
+      if (res?.success) {
+        Alert.alert('Success', res.message || 'Event created successfully')
+        router.replace('/(dashboard-publisher)/publisherHome')
+      } else {
+        Alert.alert('Error', res?.message || 'Failed to create event')
+      }
+    } catch (error: any) {
+      console.error('Create event error:', error)
+      Alert.alert('Error', error?.message || 'Failed to create event')
     }
-    console.log('Publish Event payload:', payload)
-    // TODO: integrate with backend or navigation
   }
 
   return (
@@ -234,7 +302,7 @@ const PublisherCreateEvent = () => {
                 <View style={styles.fileInfo}>
                   <ThemedText style={styles.fileName}>{uploadedFile.name}</ThemedText>
                   <ThemedText style={styles.fileSize}>
-                    {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                    {uploadedFile.size ? (uploadedFile.size / 1024 / 1024).toFixed(2) : '0.00'} MB
                   </ThemedText>
                 </View>
                 <TouchableOpacity 
@@ -246,10 +314,7 @@ const PublisherCreateEvent = () => {
               </View>
             ) : (
               <>
-                <Image
-                  source={require('../assets/upload-icon.png')} 
-                  style={styles.uploadIcon}
-                />
+                <Ionicons name="cloud-upload-outline" size={40} color="#6b7280" />
                 <ThemedText style={styles.uploadTitle}>Upload a file</ThemedText>
                 <ThemedText style={styles.uploadSubtitle}>PNG, JPG, GIF up to 10MB</ThemedText>
               </>
@@ -275,16 +340,13 @@ const PublisherCreateEvent = () => {
               onChangeText={setDate}
               placeholder="dd-mm-yyyy"
               style={styles.inputWithIcon}
-              editable={false}
+              
             />
             <TouchableOpacity 
               onPress={handleDatePress}
               style={styles.iconContainer}
             >
-              <Image
-                source={require('../assets/calendar-icon.png')}
-                style={styles.icon}
-              />
+              <Ionicons name="calendar-outline" size={20} color="#6b7280" />
             </TouchableOpacity>
           </View>
           
@@ -305,10 +367,7 @@ const PublisherCreateEvent = () => {
                   onPress={() => handleTimePress('start')}
                   style={styles.iconContainer}
                 >
-                  <Image
-                    source={require('../assets/clock-icon.png')} 
-                    style={styles.icon}
-                  />
+                  <Ionicons name="time-outline" size={20} color="#6b7280" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -325,10 +384,7 @@ const PublisherCreateEvent = () => {
                   onPress={() => handleTimePress('end')}
                   style={styles.iconContainer}
                 >
-                  <Image
-                    source={require('../assets/clock-icon.png')}
-                    style={styles.icon}
-                  />
+                  <Ionicons name="time-outline" size={20} color="#6b7280" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -337,12 +393,37 @@ const PublisherCreateEvent = () => {
           {/* Mode */}
           <Spacer height={12} />
           <FormLabel>Mode</FormLabel>
-          <TextInput
-            value={mode}
-            onChangeText={setMode}
-            placeholder="Select mode"
-            style={styles.input}
-          />
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={mode}
+              onValueChange={(value: string) => setMode(value as mode)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select mode" value="" />
+              <Picker.Item label="Online" value="Online" />
+              <Picker.Item label="Offline" value="Offline" />
+              <Picker.Item label="Hybrid" value="Hybrid" />
+            </Picker>
+          </View>
+
+          {/* Event Type */}
+          <Spacer height={12} />
+          <FormLabel>Event Type</FormLabel>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={eventType}
+              onValueChange={(value: string) => setEventType(value as EventType)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select event type" value="" />
+              <Picker.Item label="Seminar" value="Seminar" />
+              <Picker.Item label="Workshop" value="Workshop" />
+              <Picker.Item label="Guest Lecture" value="Guest Lecture" />
+              <Picker.Item label="Industrial Visit" value="Industrial Visit" />
+              <Picker.Item label="Cultural" value="Cultural" />
+              <Picker.Item label="Sports" value="Sports" />
+            </Picker>
+          </View>
 
           {/* Venue */}
           <Spacer height={12} />
@@ -464,54 +545,7 @@ const PublisherCreateEvent = () => {
         </ScrollView>
       </KeyboardAvoidingView>
       
-      {/* Fixed Bottom Navigation */}
-      <View style={styles.bottomNavContainer}>
-        <View style={styles.bottomNav}>
-          <TouchableOpacity 
-            style={styles.bottomNavButton} 
-            onPress={() => setActiveTab('events')}
-          >
-            <Ionicons 
-              name={activeTab === 'events' ? 'calendar' : 'calendar-outline'} 
-              size={24} 
-              color={activeTab === 'events' ? '#991b1b' : '#6b7280'} 
-            />
-            <Text style={[
-              styles.bottomNavText, 
-              { color: activeTab === 'events' ? '#991b1b' : '#6b7280' }
-            ]}>Events</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.bottomNavButton} 
-            onPress={() => setActiveTab('create')}
-          >
-            <View style={[
-              styles.createIconContainer, 
-              { backgroundColor: activeTab === 'create' ? '#991b1b' : '#6b7280' }
-            ]}>
-              <Ionicons name="add" size={20} color="#ffffff" />
-            </View>
-            <Text style={[
-              styles.bottomNavText, 
-              { color: activeTab === 'create' ? '#991b1b' : '#6b7280' }
-            ]}>Create</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.bottomNavButton} 
-            onPress={() => setActiveTab('profile')}
-          >
-            <Ionicons 
-              name="person-outline" 
-              size={24} 
-              color={activeTab === 'profile' ? '#991b1b' : '#6b7280'} 
-            />
-            <Text style={[
-              styles.bottomNavText, 
-              { color: activeTab === 'profile' ? '#991b1b' : '#6b7280' }
-            ]}>Profile</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Bottom nav removed; using Tabs from layout */}
 
       {/* Date Picker Modal */}
       <Modal
@@ -734,7 +768,7 @@ const PublisherCreateEvent = () => {
   )
 }
 
-const FormLabel = ({ children }) => (
+const FormLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <ThemedText style={styles.label}>{children}</ThemedText>
 )
 
@@ -781,15 +815,35 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
   },
-  uploadIcon: {
-    width: 40,
-    height: 40,
-    marginBottom: 10,
-    resizeMode: 'contain',
-  },
   uploadSubtitle: {
     fontSize: 12,
     color: '#6b7280',
+  },
+  uploadedFileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  uploadedImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  fileInfo: {
+    flex: 1,
+  },
+  fileName: {
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  fileSize: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  removeFileButton: {
+    marginLeft: 8,
   },
   inputContainer: {
     position: 'relative',
@@ -814,17 +868,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  icon: {
-    width: 20,
-    height: 20,
-    resizeMode: 'contain',
-  },
   
     row: {
     flexDirection: 'row',
   },
   flexItem: {
     flex: 1,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+    width: '100%',
   },
   sectionTitle: {
     fontSize: 16,
@@ -842,18 +902,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  organizerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  organizerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 8,
   },
   cardTitle: {
@@ -888,42 +936,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
   },
-  bottomNavContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-  },
-  bottomNavButton: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  createIconContainer: {
-    backgroundColor: '#991b1b',
-    borderRadius: 8,
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  bottomNavText: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 4,
-    color: '#6b7280',
-  },
+  
   // Date Picker Modal Styles
   modalOverlay: {
     flex: 1,

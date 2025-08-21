@@ -60,7 +60,6 @@ const Login = () => {
       }
 
       const data: LoginResponse = await response.json()
-      console.log('Login API response:', data)
 
       if (!data.success) {
         throw new Error(data.message || 'Invalid credentials')
@@ -175,7 +174,7 @@ const Login = () => {
 
     <Spacer height={30}/>
 
-    <Text style={{color:'#9e0202'}}> Forgot Password?</Text>
+    {/* <Text style={{color:'#9e0202'}}> Forgot Password?</Text> */}
 
     </View>
   )

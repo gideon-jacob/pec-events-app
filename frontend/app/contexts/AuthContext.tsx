@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { invalidateCacheByPrefix } from '../services/cache'
 
 type Role = 'user' | 'publisher'
 
@@ -46,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true
     ;(async () => {
       try {
+        await clearAllAuthData();
         const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY)
         if (raw) {
           const parsed: AuthUser = JSON.parse(raw)
@@ -68,6 +70,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
       setState({ status: 'authenticated', user })
+      // Clear any cached API data to avoid cross-user stale cache
+      try {
+        await invalidateCacheByPrefix('')
+      } catch {}
     } catch (error) {
       // Log error or show user feedback
       throw new Error('Failed to sign in: Could not save authentication state')
@@ -88,6 +94,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       setState({ status: 'unauthenticated' })
+      try {
+        // Clear cached API data on logout
+        await invalidateCacheByPrefix('')
+      } catch {}
     } catch (error) {
       // Even if storage removal fails, we should still update the state
       // as the user explicitly requested to sign out
@@ -106,6 +116,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ])
       console.log('All auth data cleared')
       setState({ status: 'unauthenticated' })
+      try {
+        await invalidateCacheByPrefix('')
+      } catch {}
     } catch (error) {
       console.warn('Failed to clear all auth data:', error)
       setState({ status: 'unauthenticated' })

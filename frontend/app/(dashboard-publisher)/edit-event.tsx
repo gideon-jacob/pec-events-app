@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  Image,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
@@ -45,6 +46,7 @@ const EditEvent = () => {
     eligibility?: string
     fee?: string
     registrationLink?: string
+    imageUrl?: string
     organizers?: Array<{ name: string; subtitle: string; icon: string }>
     creator?: { name: string; subtitle: string; icon: string }
     contacts?: Array<{ name: string; role: string; phone: string; icon: string }>
@@ -63,6 +65,7 @@ const EditEvent = () => {
         eventType: 'Seminar',
         entryFee: '',
         registrationLink: '',
+        imageUrl: '',
         organizers: [],
         creator: { name: '', subtitle: '', icon: 'person' },
         contacts: [],
@@ -75,7 +78,7 @@ const EditEvent = () => {
 
     return {
       title: ev?.title || 'Event',
-      bannerTitle: ev?.title || 'Event',
+      bannerTitle: ev?.image?.uri || 'Event',
       description: ev?.description || '',
       dateTime,
       venue: ev?.venue || '',
@@ -83,6 +86,7 @@ const EditEvent = () => {
       eventType: ev?.type || ev?.category || ev?.eventType || 'Seminar',
       entryFee: ev?.fee || '',
       registrationLink: ev?.registrationLink || '',
+      imageUrl: ev?.imageUrl || ev?.image?.uri || '',
       organizers: Array.isArray(ev?.organizers) ? ev.organizers : [],
       creator: ev?.creator || (ev?.publisher ? { name: ev.publisher.name || '', subtitle: ev.publisher.department || '', icon: 'person' } : { name: '', subtitle: '', icon: 'person' }),
       contacts: Array.isArray(ev?.contacts) ? ev.contacts : [],
@@ -110,13 +114,6 @@ const EditEvent = () => {
     return (
       <View style={styles.container}>
         <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.push('/(dashboard-publisher)/publisherHome')}>
-              <Icon name="arrow-back" size={24} color="#1e293b" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Event Details</Text>
-            <View style={{ width: 24 }} />
-          </View>
           <Text style={{ padding: 16, color: '#64748b' }}>Loading...</Text>
         </ScrollView>
       </View>
@@ -126,25 +123,29 @@ const EditEvent = () => {
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.push('/(dashboard-publisher)/publisherHome')}>
-            <Icon name="arrow-back" size={24} color="#1e293b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Event Details</Text>
-          <View style={{ width: 24 }} />
-        </View>
 
         {/* Event Banner */}
         <View style={styles.banner}>
-          <View style={styles.bannerContent}>
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>LOGO</Text>
+          <Image 
+            source={eventData.imageUrl 
+              ? { uri: eventData.imageUrl }
+              : { uri: 'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?w=1600&auto=format&fit=crop' }
+            } 
+            style={[styles.banner, { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }]}
+            resizeMode="cover"
+          />
+          {!eventData.imageUrl && (
+            <View style={styles.bannerContent}>
+              <View style={styles.logoContainer}>
+                <Text style={styles.logoText}>LOGO</Text>
+              </View>
+              <Text style={styles.bannerTitle}>{eventData.title}</Text>
+              <Text style={styles.bannerSubtitle}>ORGANIZER</Text>
             </View>
-            <Text style={styles.bannerTitle}>{eventData.bannerTitle}</Text>
-            <Text style={styles.bannerSubtitle}>ORGANIZER</Text>
-          </View>
+          )}
           <View style={styles.bannerTriangle} />
         </View>
+        
         {/* Event Title */}
         <Text style={styles.eventTitle}>{eventData.title}</Text>
 
@@ -274,7 +275,6 @@ const styles = StyleSheet.create({
   },
   banner: {
     height: 200,
-    backgroundColor: '#0f766e',
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',

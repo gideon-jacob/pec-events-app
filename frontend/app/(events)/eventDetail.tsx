@@ -13,6 +13,7 @@ type Params = {
   time?: string
   venue?: string
   type?: string
+  mode?: string
   eligibility?: string
   fee?: string
   imageUrl?: string
@@ -82,8 +83,21 @@ export default function EventDetail() {
       <LabelRow icon="calendar-outline" label="Date & Time" value={`${(event as any)?.date || 'July 20, 2024'}, ${(event as any)?.time || '10:00 AM – 1:00 PM'}`} />
       <LabelRow icon="location-outline" label="Venue" value={(event as any)?.venue || 'College Auditorium (Offline)'} />
       <LabelRow icon="people-outline" label="Eligibility" value={(event as any)?.eligibility || 'Open to all students'} />
-      <LabelRow icon="pricetag-outline" label="Event Type" value={(event as any)?.type || (event as any)?.category || 'Seminar'} />
-      <LabelRow icon="cash-outline" label="Entry Fee" value={(event as any)?.fee || 'Free'} />
+      <LabelRow 
+        icon="pricetag-outline" 
+        label="Event Type" 
+        value={(event as any)?.type || (event as any)?.category || 'Seminar'} 
+      />
+      <LabelRow 
+        icon="globe-outline" 
+        label="Event Mode" 
+        value={event?.mode || 'Offline'} 
+      />
+      <LabelRow 
+        icon="cash-outline" 
+        label="Entry Fee" 
+        value={event?.fee || 'Free'} 
+      />
 
       {/* Organizers */}
       <Text style={styles.sectionTitle}>Organizers</Text>
@@ -311,12 +325,12 @@ export default function EventDetail() {
         </>
       )}
 
-      {/* Interest CTA */}
+      {/* Interest CTA
       <Text style={styles.sectionTitleCentered}>Are you interested?</Text>
       <View style={styles.interestRow}>
         <Pressable style={[styles.interestBtn, styles.interestYes]}><Text style={styles.interestYesText}>Yes</Text></Pressable>
         <Pressable style={[styles.interestBtn, styles.interestNo]}><Text style={styles.interestNoText}>No</Text></Pressable>
-      </View>
+      </View> */}
 
       {/* Register CTA */}
       <Pressable
