@@ -5,6 +5,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome5'
 import { router } from 'expo-router'
 import { type EventItem } from '../data/events'
 import { mockApi } from '../services/mockApi'
+import { invalidateCacheByPrefix } from '../services/cache'
 
 
 
@@ -75,6 +76,10 @@ const StudentHome = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
+    try {
+      await invalidateCacheByPrefix('student:events:')
+      await invalidateCacheByPrefix('student:events:list')
+    } catch {}
     await fetchEvents()
     setRefreshing(false)
   }, [fetchEvents])

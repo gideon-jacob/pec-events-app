@@ -16,6 +16,7 @@ import { router } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { SearchEvent } from '../data/events'
 import { mockApi } from '../services/mockApi'
+import { invalidateCacheByPrefix } from '../services/cache'
 
 const departments = ['All Departments', 'CSE', 'AIML', 'AIDS', 'ECE', 'MECH', 'CIVIL', 'EEE'] as const
 const categories = ['All', 'Seminar', 'Workshop', 'Guest Lecture', 'Industrial Visit', 'Cultural', 'Sports'] as const
@@ -52,6 +53,11 @@ const PublisherHome = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
+    try {
+      await invalidateCacheByPrefix('publisher:events:')
+      await invalidateCacheByPrefix('student:events:')
+      await invalidateCacheByPrefix('student:events:list')
+    } catch {}
     await fetchEvents()
     setRefreshing(false)
   }, [fetchEvents])
@@ -71,7 +77,10 @@ const PublisherHome = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Icon name="search" size={20} color="#64748b" style={styles.searchIcon} />
@@ -141,11 +150,7 @@ const PublisherHome = () => {
       </Modal>
 
       {/* Events List */}
-      <ScrollView 
-        style={styles.eventsList} 
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
+      <View style={styles.eventsList}>
         {filtered.map((event) => (
           <TouchableOpacity
             key={event.id}
@@ -183,8 +188,8 @@ const PublisherHome = () => {
         {filtered.length === 0 && (
           <Text style={styles.noEventsText}>No events found.</Text>
         )}
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   )
 }
 
