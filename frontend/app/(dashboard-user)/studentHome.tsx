@@ -49,7 +49,7 @@ const EventCard = ({ item }: { item: EventItem }) => (
       <Text style={styles.cardSubTitle}>
         {item.date} · {item.time}
       </Text>
-      <Text style={styles.cardDesc}>{item.description}</Text>
+      <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
     </View>
   </Pressable>
 )
