@@ -1,5 +1,5 @@
-import React from 'react'
-import { Image, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native'
+import React, { useCallback, useState } from 'react'
+import { Image, ScrollView, StyleSheet, Text, View, Pressable, RefreshControl } from 'react-native'
 import Icon from 'react-native-vector-icons/Ionicons'
 import FontAwesome from 'react-native-vector-icons/FontAwesome5'
 import { router } from 'expo-router'
@@ -57,26 +57,33 @@ const EventCard = ({ item }: { item: EventItem }) => (
 const StudentHome = () => {
   const [events, setEvents] = React.useState<EventItem[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [refreshing, setRefreshing] = React.useState(false)
 
-  React.useEffect(() => {
-    let isMounted = true
-    ;(async () => {
-      try {
-        const data = await mockApi.listStudentHomeEvents()
-        if (isMounted) setEvents(data)
-      } catch (err: any) {
-        console.error('Load student events error:', err)
-      } finally {
-        if (isMounted) setLoading(false)
-      }
-    })()
-    return () => {
-      isMounted = false
-    }
+  const fetchEvents = useCallback(async () => {
+    try {
+      const data = await mockApi.listStudentHomeEvents()
+      setEvents(data)
+    } catch (err: any) {
+      console.error('Load student events error:', err)
+    } 
   }, [])
 
+  React.useEffect(() => {
+    setLoading(true)
+    fetchEvents().finally(() => setLoading(false))
+  }, [fetchEvents])
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await fetchEvents()
+    setRefreshing(false)
+  }, [fetchEvents])
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView 
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Home</Text>
       </View>

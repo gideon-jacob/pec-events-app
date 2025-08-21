@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import {
   StyleSheet,
   Text,
@@ -10,6 +10,7 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Image,
+  RefreshControl,
 } from 'react-native'
 import { router } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
@@ -27,28 +28,33 @@ const PublisherHome = () => {
   const [catPickerVisible, setCatPickerVisible] = useState(false)
   const [events, setEvents] = useState<SearchEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const fetchEvents = useCallback(async () => {
+    try {
+      const params = {
+        dept: selectedDepartment !== 'All Departments' ? selectedDepartment : undefined,
+        type: selectedCategory !== 'All' ? selectedCategory : undefined,
+        name: searchQuery.trim() !== '' ? searchQuery.trim() : undefined,
+      }
+      const fetched = await mockApi.listSearchEvents(params)
+      setEvents(fetched)
+    } catch (error) {
+      console.error('Error fetching events:', error)
+    }
+  }, [searchQuery, selectedDepartment, selectedCategory])
 
   // Fetch and search via API when filters/search change
   React.useEffect(() => {
-    let mounted = true
     setLoading(true)
-   ;(async () => {
-      try {
-        const params = {
-          dept: selectedDepartment !== 'All Departments' ? selectedDepartment : undefined,
-          type: selectedCategory !== 'All' ? selectedCategory : undefined,
-          name: searchQuery.trim() !== '' ? searchQuery.trim() : undefined,
-        }
-        const fetched = await mockApi.listSearchEvents(params)
-        if (mounted) setEvents(fetched)
-      } catch (error) {
-        console.error('Error fetching events:', error)
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    })()
-    return () => { mounted = false }
-  }, [searchQuery, selectedDepartment, selectedCategory])
+    fetchEvents().finally(() => setLoading(false))
+  }, [fetchEvents])
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await fetchEvents()
+    setRefreshing(false)
+  }, [fetchEvents])
 
   const filtered = events
 
@@ -135,7 +141,11 @@ const PublisherHome = () => {
       </Modal>
 
       {/* Events List */}
-      <ScrollView style={styles.eventsList} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.eventsList} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         {filtered.map((event) => (
           <TouchableOpacity
             key={event.id}
