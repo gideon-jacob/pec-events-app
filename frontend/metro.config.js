@@ -1,20 +1,25 @@
-const { getDefaultConfig } = require('expo/metro-config');
+// Prefer Expo's default Metro config; fall back to a minimal config if unavailable
+let getDefaultConfig;
+try {
+  ({ getDefaultConfig } = require('expo/metro-config'))
+} catch (_) {
+  try {
+    ({ getDefaultConfig } = require('@expo/metro-config'))
+  } catch (_) {
+    getDefaultConfig = undefined
+  }
+}
 
-const config = getDefaultConfig(__dirname);
-
-// Ensure Metro supports Flow v0.275.0 and React Native 0.79.5
-
-
-// Add support for additional file extensions
-config.resolver.sourceExts = [
-  'js',
-  'jsx',
-  'json',
-  'ts',
-  'tsx',
-  'cjs',
-  'mjs',
-];
-
-// Do not alias react-native to react-native-web globally; Expo handles web mapping.
-module.exports = config;
+if (typeof getDefaultConfig === 'function') {
+  const config = getDefaultConfig(__dirname)
+  const existing = Array.isArray(config?.resolver?.sourceExts) ? config.resolver.sourceExts : []
+  const merged = Array.from(new Set([...existing, 'cjs', 'mjs']))
+  config.resolver = { ...(config.resolver || {}), sourceExts: merged }
+  module.exports = config
+} else {
+  module.exports = {
+    resolver: {
+      sourceExts: ['js', 'jsx', 'json', 'ts', 'tsx', 'cjs', 'mjs'],
+    },
+  }
+}

@@ -255,7 +255,7 @@ export const mockApi = {
   },
 
   async getPublisherEventById(id: string): Promise<(EventItem | SearchEvent) | null> {
-    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL
+    const baseUrl = getApiBaseUrl()
     if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) {
       throw new Error('Missing API base URL configuration')
     }

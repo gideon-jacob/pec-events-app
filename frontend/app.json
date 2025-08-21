@@ -33,9 +33,7 @@
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-router"
-    ],
+    
     "extra": {
       "router": {},
       "eas": {
