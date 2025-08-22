@@ -47,7 +47,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true
     ;(async () => {
       try {
-        await clearAllAuthData();
         const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY)
         if (raw) {
           const parsed: AuthUser = JSON.parse(raw)

@@ -4,6 +4,7 @@ import Icon from 'react-native-vector-icons/Ionicons'
 import { useLocalSearchParams } from 'expo-router'
 import { type EventItem, type SearchEvent } from '../data/events'
 import { mockApi } from '../services/mockApi'
+import { contactUtils } from '../utils/contactUtils'
 
 type Params = {
   id?: string
@@ -149,19 +150,7 @@ export default function EventDetail() {
               <Pressable
                 style={styles.circleBtn}
                 onPress={async () => {
-                  const url = `tel:${c.phone}`
-                  try {
-                    const canOpen = await Linking.canOpenURL(url)
-                    if (canOpen) {
-                      await Linking.openURL(url)
-                    } else {
-                      Alert.alert('Cannot place call', 'Your device cannot handle phone calls for this number.')
-                      console.warn('Linking.canOpenURL returned false for', url)
-                    }
-                  } catch (error) {
-                    console.error('Failed to open phone URL', url, error)
-                    Alert.alert('Call failed', 'Unable to open the dialer. Please try again later.')
-                  }
+                  await contactUtils.makePhoneCall(c.phone)
                 }}
               >
                 <Icon name="call" size={16} color="#0f172a" />
@@ -169,26 +158,7 @@ export default function EventDetail() {
               <Pressable
                 style={[styles.circleBtn, styles.circleBtnGreen]}
                 onPress={async () => {
-                  const phone = c.phone.replace(/\s/g, '')
-                  const appUrl = `whatsapp://send?phone=${phone}`
-                  const webUrl = `https://wa.me/${phone}`
-                  try {
-                    const canOpenApp = await Linking.canOpenURL(appUrl)
-                    if (canOpenApp) {
-                      await Linking.openURL(appUrl)
-                      return
-                    }
-                    const canOpenWeb = await Linking.canOpenURL(webUrl)
-                    if (canOpenWeb) {
-                      await Linking.openURL(webUrl)
-                      return
-                    }
-                    Alert.alert('WhatsApp not available', 'WhatsApp is not installed, and the web link could not be opened.')
-                    console.warn('Neither WhatsApp app nor web link could be opened:', { appUrl, webUrl })
-                  } catch (error) {
-                    console.error('Failed to open WhatsApp URL', { appUrl, webUrl }, error)
-                    Alert.alert('Unable to open WhatsApp', 'Something went wrong while trying to open WhatsApp.')
-                  }
+                  await contactUtils.openWhatsApp(c.phone)
                 }}
               >
                 <Icon name="logo-whatsapp" size={16} color="#16a34a" />
@@ -211,21 +181,7 @@ export default function EventDetail() {
               <Pressable
                 style={styles.circleBtn}
                 onPress={async () => {
-                  const phoneRaw = '+91 98765 43210'
-                  const phone = phoneRaw.replace(/\s/g, '')
-                  const url = `tel:${phone}`
-                  try {
-                    const canOpen = await Linking.canOpenURL(url)
-                    if (canOpen) {
-                      await Linking.openURL(url)
-                    } else {
-                      Alert.alert('Cannot place call', 'Your device cannot handle phone calls for this number.')
-                      console.warn('Linking.canOpenURL returned false for', url)
-                    }
-                  } catch (error) {
-                    console.error('Failed to open phone URL', url, error)
-                    Alert.alert('Call failed', 'Unable to open the dialer. Please try again later.')
-                  }
+                  await contactUtils.makePhoneCall('+91 98765 43210')
                 }}
               >
                 <Icon name="call" size={16} color="#0f172a" />
@@ -233,27 +189,7 @@ export default function EventDetail() {
               <Pressable
                 style={[styles.circleBtn, styles.circleBtnGreen]}
                 onPress={async () => {
-                  const phoneRaw = '+91 98765 43210'
-                  const phone = phoneRaw.replace(/\s/g, '')
-                  const appUrl = `whatsapp://send?phone=${phone}`
-                  const webUrl = `https://wa.me/${phone}`
-                  try {
-                    const canOpenApp = await Linking.canOpenURL(appUrl)
-                    if (canOpenApp) {
-                      await Linking.openURL(appUrl)
-                      return
-                    }
-                    const canOpenWeb = await Linking.canOpenURL(webUrl)
-                    if (canOpenWeb) {
-                      await Linking.openURL(webUrl)
-                      return
-                    }
-                    Alert.alert('WhatsApp not available', 'WhatsApp is not installed, and the web link could not be opened.')
-                    console.warn('Neither WhatsApp app nor web link could be opened:', { appUrl, webUrl })
-                  } catch (error) {
-                    console.error('Failed to open WhatsApp URL', { appUrl, webUrl }, error)
-                    Alert.alert('Unable to open WhatsApp', 'Something went wrong while trying to open WhatsApp.')
-                  }
+                  await contactUtils.openWhatsApp('+91 98765 43210')
                 }}
               >
                 <Icon name="logo-whatsapp" size={16} color="#16a34a" />
@@ -273,21 +209,7 @@ export default function EventDetail() {
               <Pressable
                 style={styles.circleBtn}
                 onPress={async () => {
-                  const phoneRaw = '+91 98765 43211'
-                  const phone = phoneRaw.replace(/\s/g, '')
-                  const url = `tel:${phone}`
-                  try {
-                    const canOpen = await Linking.canOpenURL(url)
-                    if (canOpen) {
-                      await Linking.openURL(url)
-                    } else {
-                      Alert.alert('Cannot place call', 'Your device cannot handle phone calls for this number.')
-                      console.warn('Linking.canOpenURL returned false for', url)
-                    }
-                  } catch (error) {
-                    console.error('Failed to open phone URL', url, error)
-                    Alert.alert('Call failed', 'Unable to open the dialer. Please try again later.')
-                  }
+                  await contactUtils.makePhoneCall('+91 98765 43211')
                 }}
               >
                 <Icon name="call" size={16} color="#0f172a" />
@@ -295,27 +217,7 @@ export default function EventDetail() {
               <Pressable
                 style={[styles.circleBtn, styles.circleBtnGreen]}
                 onPress={async () => {
-                  const phoneRaw = '+91 98765 43211'
-                  const phone = phoneRaw.replace(/\s/g, '')
-                  const appUrl = `whatsapp://send?phone=${phone}`
-                  const webUrl = `https://wa.me/${phone}`
-                  try {
-                    const canOpenApp = await Linking.canOpenURL(appUrl)
-                    if (canOpenApp) {
-                      await Linking.openURL(appUrl)
-                      return
-                    }
-                    const canOpenWeb = await Linking.canOpenURL(webUrl)
-                    if (canOpenWeb) {
-                      await Linking.openURL(webUrl)
-                      return
-                    }
-                    Alert.alert('WhatsApp not available', 'WhatsApp is not installed, and the web link could not be opened.')
-                    console.warn('Neither WhatsApp app nor web link could be opened:', { appUrl, webUrl })
-                  } catch (error) {
-                    console.error('Failed to open WhatsApp URL', { appUrl, webUrl }, error)
-                    Alert.alert('Unable to open WhatsApp', 'Something went wrong while trying to open WhatsApp.')
-                  }
+                  await contactUtils.openWhatsApp('+91 98765 43211')
                 }}
               >
                 <Icon name="logo-whatsapp" size={16} color="#16a34a" />

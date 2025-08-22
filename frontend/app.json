@@ -27,7 +27,20 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.gideonjacob.peceventapp"
+      "package": "com.gideonjacob.peceventapp",
+      "permissions": [
+        "android.permission.CALL_PHONE",
+        "android.permission.READ_PHONE_STATE"
+      ],
+      "intentFilters": [
+        {
+          "action": "android.intent.action.CALL",
+          "category": ["android.intent.category.DEFAULT"],
+          "data": {
+            "scheme": "tel"
+          }
+        }
+      ]
     },
     "web": {
       "bundler": "metro",

@@ -13,6 +13,7 @@ import Icon from 'react-native-vector-icons/Ionicons'
 import { useEffect, useMemo, useState } from 'react'
 import { mockApi } from '../services/mockApi'
 import { type EventItem, type SearchEvent } from '../data/events'
+import { contactUtils } from '../utils/contactUtils'
 
 const EditEvent = () => {
   const params = useLocalSearchParams<{ id?: string }>()
@@ -98,12 +99,12 @@ const EditEvent = () => {
     router.push({ pathname: '/(dashboard-publisher)/edit-event-form', params: { id } })
   }
 
-  const handleCall = (phone: string) => {
-    Linking.openURL(`tel:${phone}`)
+  const handleCall = async (phone: string) => {
+    await contactUtils.makePhoneCall(phone)
   }
 
-  const handleWhatsApp = (phone: string) => {
-    Linking.openURL(`whatsapp://send?phone=${phone.replace(/\s/g, '')}`)
+  const handleWhatsApp = async (phone: string) => {
+    await contactUtils.openWhatsApp(phone)
   }
 
   const handleRegistrationLink = () => {
