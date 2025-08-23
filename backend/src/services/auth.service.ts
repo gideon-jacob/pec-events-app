@@ -8,12 +8,23 @@ export class AuthService {
 
   constructor(supabaseClient: SupabaseClient) {
     this.supabase = supabaseClient;
-    this.jwtSecret = process.env.JWT_SECRET || "supersecretjwtkey"; // Use a strong secret from env variables
-    if (this.jwtSecret === "supersecretjwtkey") {
-      console.warn(
-        "WARNING: JWT_SECRET is not set in environment variables. Using a default insecure key."
+
+    // Ensure JWT_SECRET is provided
+    if (!process.env.JWT_SECRET) {
+      console.error(
+        "ERROR: JWT_SECRET environment variable is required but not set."
       );
+      console.error(
+        "Please set JWT_SECRET in your environment variables or .env file."
+      );
+      console.error("For development, you can generate a secure secret using:");
+      console.error(
+        "  node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\""
+      );
+      process.exit(1);
     }
+
+    this.jwtSecret = process.env.JWT_SECRET;
   }
 
   async login(username: string, password: string) {
@@ -26,12 +37,18 @@ export class AuthService {
         .single();
 
       if (userError || !userData) {
-        return { success: false, code: "USER_NOT_FOUND", message: "User account does not exist." };
+        return {
+          success: false,
+          code: "USER_NOT_FOUND",
+          message: "User account does not exist.",
+        };
       }
 
-      console.log(userData);
       // 2. Compare provided password with stored hashed password
-      if (!userData.hashed_password || typeof userData.hashed_password !== "string") {
+      if (
+        !userData.hashed_password ||
+        typeof userData.hashed_password !== "string"
+      ) {
         return {
           success: false,
           code: "PASSWORD_HASH_INVALID",
@@ -41,17 +58,25 @@ export class AuthService {
 
       let isPasswordValid = false;
       try {
-        isPasswordValid = await bcrypt.compare(password, userData.hashed_password);
+        isPasswordValid = await bcrypt.compare(
+          password,
+          userData.hashed_password
+        );
       } catch (err: any) {
         return {
           success: false,
           code: "PASSWORD_VERIFY_ERROR",
-          message: "Password verification failed. Please try again or reset your password.",
-        }; 
+          message:
+            "Password verification failed. Please try again or reset your password.",
+        };
       }
 
       if (!isPasswordValid) {
-        return { success: false, code: "WRONG_PASSWORD", message: "Incorrect password." };
+        return {
+          success: false,
+          code: "WRONG_PASSWORD",
+          message: "Incorrect password.",
+        };
       }
 
       // 3. Generate JWT token

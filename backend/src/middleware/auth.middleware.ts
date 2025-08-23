@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 
 interface UserPayload {
   userId: string;
@@ -15,11 +15,26 @@ declare global {
   }
 }
 
-const jwtSecret = process.env.JWT_SECRET || "supersecretjwtkey"; // Must match the secret used for signing
+// Ensure JWT_SECRET is provided
+if (!process.env.JWT_SECRET) {
+  console.error(
+    "ERROR: JWT_SECRET environment variable is required but not set."
+  );
+  console.error(
+    "Please set JWT_SECRET in your environment variables or .env file."
+  );
+  process.exit(1);
+}
 
-export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+const jwtSecret = process.env.JWT_SECRET;
+
+export const authenticateToken = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
 
   if (token == null) {
     return res.status(401).json({ message: "Authentication token required." });
@@ -38,7 +53,9 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 export const authorizeRoles = (roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !req.user.role || !roles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Access denied. Insufficient permissions." });
+      return res
+        .status(403)
+        .json({ message: "Access denied. Insufficient permissions." });
     }
     next();
   };
