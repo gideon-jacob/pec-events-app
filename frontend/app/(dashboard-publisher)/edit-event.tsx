@@ -6,12 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  Image,
+  Pressable,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useEffect, useMemo, useState } from 'react'
-import { EventItem, SearchEvent } from '../data/events'
 import { mockApi } from '../services/mockApi'
+import { type EventItem, type SearchEvent } from '../data/events'
+import { contactUtils } from '../utils/contactUtils'
 
 const EditEvent = () => {
   const params = useLocalSearchParams<{ id?: string }>()
@@ -22,7 +25,7 @@ const EditEvent = () => {
     const load = async () => {
       try {
         if (params.id) {
-          const ev = await mockApi.getEventById(params.id)
+          const ev = await mockApi.getPublisherEventById(params.id)
           setFetched(ev)
         }
       } finally {
@@ -45,70 +48,50 @@ const EditEvent = () => {
     eligibility?: string
     fee?: string
     registrationLink?: string
+    imageUrl?: string
     organizers?: Array<{ name: string; subtitle: string; icon: string }>
     creator?: { name: string; subtitle: string; icon: string }
     contacts?: Array<{ name: string; role: string; phone: string; icon: string }>
   }
 
   const eventData = useMemo(() => {
-    const eventInfo = fetched as EventData | null
-    const title = eventInfo?.title ?? 'Getting Started with Digital Marketing'
-    const description =
-      eventInfo?.description ??
-      'Join us for an insightful seminar on the fundamentals of digital marketing. This event will cover key strategies and tools to help you succeed in the online world.'
-    const date = eventInfo?.date ?? 'July 20, 2024'
-    const time = eventInfo?.time ?? '10:00 AM - 1:00 PM'
-    const dateTime = `${date}${time ? `, ${time}` : ''}`
-    const eventType = eventInfo?.type ?? eventInfo?.category ?? 'Seminar'
-    const venue = (fetched as any)?.venue ?? 'College Auditorium (Offline)'
-    const eligibility = (fetched as any)?.eligibility ?? 'Open to all students'
-    const entryFee = (fetched as any)?.fee ?? 'Free'
+    const ev = fetched as any
+    if (!ev) {
+      return {
+        title: 'Event',
+        bannerTitle: 'Event',
+        description: '',
+        dateTime: '',
+        venue: '',
+        eligibility: '',
+        eventType: 'Seminar',
+        entryFee: '',
+        registrationLink: '',
+        imageUrl: '',
+        organizers: [],
+        creator: { name: '', subtitle: '', icon: 'person' },
+        contacts: [],
+      }
+    }
+
+    const date: string = ev?.date || ''
+    const time: string = ev?.time || ev?.startTime || ''
+    const dateTime = date && time ? `${date}, ${time}` : (date || time || '')
 
     return {
-      title,
-      bannerTitle: title,
-      description,
+      title: ev?.title || 'Event',
+      bannerTitle: ev?.image?.uri || 'Event',
+      description: ev?.description || '',
       dateTime,
-      venue,
-      eligibility,
-      eventType,
-      entryFee,
-      registrationLink:
-        (fetched as any)?.registrationLink ?? 'https://example.com/register',
-      organizers:
-        (fetched as any)?.organizers ?? [
-          {
-            name: 'Prathyusha Engineering College',
-            subtitle: 'Department of Computer Science',
-            icon: 'business',
-          },
-          {
-            name: 'Entrepreneurship Cell',
-            subtitle: 'In association with IIC',
-            icon: 'people',
-          },
-        ],
-      creator:
-        (fetched as any)?.creator ?? {
-          name: 'Publisher User',
-          subtitle: 'Department of Computer Science',
-          icon: 'person',
-        },
-      contacts:
-        (fetched as any)?.contacts ?? [
-          {
-            name: 'Rohan Sharma',
-            role: 'Student Coordinator',
-            phone: '+91 98765 43210',
-            icon: 'person',
-          },
-          {
-            name: 'Priya Singh',
-            role: 'Faculty Coordinator',
-            phone: '+91 98765 43211',
-            icon: 'person',
-          },
-        ],
+      venue: ev?.venue || '',
+      eligibility: ev?.eligibility || '',
+      eventType: ev?.type || ev?.category || ev?.eventType || 'Seminar',
+      entryFee: ev?.fee || '',
+      registrationLink: ev?.registrationLink || '',
+      imageUrl: ev?.imageUrl || ev?.image?.uri || '',
+      organizers: Array.isArray(ev?.organizers) ? ev.organizers : [],
+      creator: ev?.creator || (ev?.publisher ? { name: ev.publisher.name || '', subtitle: ev.publisher.department || '', icon: 'person' } : { name: '', subtitle: '', icon: 'person' }),
+      contacts: Array.isArray(ev?.contacts) ? ev.contacts : [],
     }
   }, [fetched])
 
@@ -117,12 +100,12 @@ const EditEvent = () => {
     router.push({ pathname: '/(dashboard-publisher)/edit-event-form', params: { id } })
   }
 
-  const handleCall = (phone: string) => {
-    Linking.openURL(`tel:${phone}`)
+  const handleCall = async (phone: string) => {
+    await contactUtils.makePhoneCall(phone)
   }
 
-  const handleWhatsApp = (phone: string) => {
-    Linking.openURL(`whatsapp://send?phone=${phone.replace(/\s/g, '')}`)
+  const handleWhatsApp = async (phone: string) => {
+    await contactUtils.openWhatsApp(phone)
   }
 
   const handleRegistrationLink = () => {
@@ -133,13 +116,6 @@ const EditEvent = () => {
     return (
       <View style={styles.container}>
         <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.push('/(dashboard-publisher)/publisherHome')}>
-              <Icon name="arrow-back" size={24} color="#1e293b" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Event Details</Text>
-            <View style={{ width: 24 }} />
-          </View>
           <Text style={{ padding: 16, color: '#64748b' }}>Loading...</Text>
         </ScrollView>
       </View>
@@ -147,129 +123,189 @@ const EditEvent = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.push('/(dashboard-publisher)/publisherHome')}>
-            <Icon name="arrow-back" size={24} color="#1e293b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Event Details</Text>
-          <View style={{ width: 24 }} />
-        </View>
+    <ScrollView contentContainerStyle={styles.container}>
+      {/* Cover */}
+      <Image 
+        source={eventData.imageUrl 
+          ? { uri: eventData.imageUrl }
+          : { uri: 'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?w=1600&auto=format&fit=crop' }
+        } 
+        style={styles.cover}
+      />
 
-        {/* Event Banner */}
-        <View style={styles.banner}>
-          <View style={styles.bannerContent}>
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>LOGO</Text>
+      {/* Title + Description */}
+      <Text style={styles.title}>{eventData.title}</Text>
+      <Text style={styles.description}>
+        {eventData.description || 'Join us for an insightful session covering key strategies and tools to help you succeed. Whether you are a student or an aspiring professional, this event is for you.'}
+      </Text>
+
+      {/* Info list */}
+      <LabelRow icon="calendar-outline" label="Date & Time" value={eventData.dateTime} />
+      <LabelRow icon="location-outline" label="Venue" value={eventData.venue} />
+      <LabelRow icon="people-outline" label="Eligibility" value={eventData.eligibility} />
+      <LabelRow icon="pricetag-outline" label="Event Type" value={eventData.eventType} />
+      <LabelRow icon="cash-outline" label="Entry Fee" value={eventData.entryFee} />
+
+      {/* Organizers */}
+      <Text style={styles.sectionTitle}>Organizers</Text>
+      {eventData.organizers.length > 0 ? (
+        eventData.organizers.map((organizer: { name: string; subtitle: string; icon: string }, index: number) => (
+          <View key={index} style={styles.orgRow}>
+            <View style={styles.orgAvatar}>
+              <Icon name={organizer.icon || 'business-outline'} size={18} color="#94a3b8" />
             </View>
-            <Text style={styles.bannerTitle}>{eventData.bannerTitle}</Text>
-            <Text style={styles.bannerSubtitle}>ORGANIZER</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.orgName}>{organizer.name}</Text>
+              <Text style={styles.orgSub}>{organizer.subtitle}</Text>
+            </View>
           </View>
-          <View style={styles.bannerTriangle} />
+        ))
+      ) : (
+        <>
+          <View style={styles.orgRow}>
+            <View style={styles.orgAvatar}><Icon name="business-outline" size={18} color="#94a3b8" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.orgName}>Prathyusha Engineering College</Text>
+              <Text style={styles.orgSub}>Department of Computer Science</Text>
+            </View>
+          </View>
+          <View style={styles.orgRow}>
+            <View style={styles.orgAvatar}><Icon name="people-circle-outline" size={18} color="#94a3b8" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.orgName}>Entrepreneurship Cell</Text>
+              <Text style={styles.orgSub}>In association with IIC</Text>
+            </View>
+          </View>
+        </>
+      )}
+
+      {/* Event Creator */}
+      <Text style={styles.sectionTitle}>Event Creator</Text>
+      <View style={styles.orgRow}>
+        <View style={styles.orgAvatar}>
+          <Icon name={eventData.creator.icon || 'person'} size={18} color="#94a3b8" />
         </View>
-        {/* Event Title */}
-        <Text style={styles.eventTitle}>{eventData.title}</Text>
-
-        {/* Event Description */}
-        <Text style={styles.description}>{eventData.description}</Text>
-
-        {/* Event Details */}
-        <View style={styles.detailsSection}>
-          <DetailItem icon="calendar" text={eventData.dateTime} />
-          <DetailItem icon="location" text={eventData.venue} />
-          <DetailItem icon="school" text={eventData.eligibility} />
-          <DetailItem icon="pricetag" text={eventData.eventType} />
-          <DetailItem icon="pricetag" text={eventData.entryFee} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.orgName}>{eventData.creator.name || 'Event Creator'}</Text>
+          <Text style={styles.orgSub}>{eventData.creator.subtitle || 'Creator'}</Text>
         </View>
+      </View>
 
-        {/* Organizers */}
-        <Section title="Organizers">
-          {eventData.organizers.map((organizer: { name: string; subtitle: string; icon: string }, index: number) => (
-            <ContactItem
-              key={index}
-              name={organizer.name}
-              subtitle={organizer.subtitle}
-              icon={organizer.icon}
-            />
-          ))}
-        </Section>
-
-        {/* Event Creator */}
-        <Section title="Event Creator">
-          <ContactItem
-            name={eventData.creator.name}
-            subtitle={eventData.creator.subtitle}
-            icon={eventData.creator.icon}
-          />
-        </Section>
-
-        {/* Point of Contact */}
-        <Section title="Point of Contact">
-          {eventData.contacts.map((contact: { name: string; role: string; phone: string; icon: string }, index: number) => (
-            <View key={index} style={styles.contactContainer}>
-              <ContactItem
-                name={contact.name}
-                subtitle={contact.role}
-                icon={contact.icon}
-              />
-              <Text style={styles.phoneNumber}>{contact.phone}</Text>
-              <View style={styles.contactActions}>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => handleCall(contact.phone)}
-                >
-                  <Icon name="call" size={16} color="#dc2626" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => handleWhatsApp(contact.phone)}
-                >
-                  <Icon name="logo-whatsapp" size={16} color="#16a34a" />
-                </TouchableOpacity>
+      {/* Point of Contact */}
+      <Text style={styles.sectionTitle}>Point of Contact</Text>
+      {eventData.contacts.length > 0 ? (
+        eventData.contacts.map((contact: { name: string; role: string; phone: string; icon: string }, index: number) => (
+          <View key={index} style={styles.pocCard}>
+            <View style={styles.pocLeft}>
+              <View style={styles.pocAvatar}>
+                <Icon name={contact.icon || 'person'} size={18} color="#94a3b8" />
+              </View>
+              <View>
+                <Text style={styles.pocName}>{contact.name}</Text>
+                <Text style={styles.pocRole}>{contact.role}</Text>
+                <Text style={styles.pocPhone}>{contact.phone}</Text>
               </View>
             </View>
-          ))}
-        </Section>
+            <View style={styles.pocActions}>
+              <Pressable
+                style={styles.circleBtn}
+                onPress={() => handleCall(contact.phone)}
+              >
+                <Icon name="call" size={16} color="#0f172a" />
+              </Pressable>
+              <Pressable
+                style={[styles.circleBtn, styles.circleBtnGreen]}
+                onPress={() => handleWhatsApp(contact.phone)}
+              >
+                <Icon name="logo-whatsapp" size={16} color="#16a34a" />
+              </Pressable>
+            </View>
+          </View>
+        ))
+      ) : (
+        <>
+          <View style={styles.pocCard}>
+            <View style={styles.pocLeft}>
+              <View style={styles.pocAvatar}><Icon name="person" size={18} color="#94a3b8" /></View>
+              <View>
+                <Text style={styles.pocName}>Rohan Sharma</Text>
+                <Text style={styles.pocRole}>Student Coordinator</Text>
+                <Text style={styles.pocPhone}>+91 98765 43210</Text>
+              </View>
+            </View>
+            <View style={styles.pocActions}>
+              <Pressable
+                style={styles.circleBtn}
+                onPress={() => handleCall('+91 98765 43210')}
+              >
+                <Icon name="call" size={16} color="#0f172a" />
+              </Pressable>
+              <Pressable
+                style={[styles.circleBtn, styles.circleBtnGreen]}
+                onPress={() => handleWhatsApp('+91 98765 43210')}
+              >
+                <Icon name="logo-whatsapp" size={16} color="#16a34a" />
+              </Pressable>
+            </View>
+          </View>
+          <View style={styles.pocCard}>
+            <View style={styles.pocLeft}>
+              <View style={styles.pocAvatar}><Icon name="person" size={18} color="#94a3b8" /></View>
+              <View>
+                <Text style={styles.pocName}>Priya Singh</Text>
+                <Text style={styles.pocRole}>Faculty Coordinator</Text>
+                <Text style={styles.pocPhone}>+91 98765 43211</Text>
+              </View>
+            </View>
+            <View style={styles.pocActions}>
+              <Pressable
+                style={styles.circleBtn}
+                onPress={() => handleCall('+91 98765 43211')}
+              >
+                <Icon name="call" size={16} color="#0f172a" />
+              </Pressable>
+              <Pressable
+                style={[styles.circleBtn, styles.circleBtnGreen]}
+                onPress={() => handleWhatsApp('+91 98765 43211')}
+              >
+                <Icon name="logo-whatsapp" size={16} color="#16a34a" />
+              </Pressable>
+            </View>
+          </View>
+        </>
+      )}
 
-        {/* Registration Link */}
-        <Section title="Registration Link">
-          <TouchableOpacity style={styles.linkContainer} onPress={handleRegistrationLink}>
+      {/* Registration Link */}
+      {eventData.registrationLink && (
+        <>
+          <Text style={styles.sectionTitle}>Registration Link</Text>
+          <Pressable
+            style={styles.linkContainer}
+            onPress={handleRegistrationLink}
+          >
             <Icon name="link" size={20} color="#64748b" />
             <Text style={styles.linkText}>{eventData.registrationLink}</Text>
-          </TouchableOpacity>
-        </Section>
+          </Pressable>
+        </>
+      )}
 
-        {/* Edit Event Button */}
-        <TouchableOpacity style={styles.editButton} onPress={handleEditEvent}>
-          <Icon name="create" size={20} color="#fff" />
-          <Text style={styles.editButtonText}>Edit Event</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
+      {/* Edit Event Button */}
+      <Pressable style={styles.editButton} onPress={handleEditEvent}>
+        <Icon name="create" size={20} color="#fff" />
+        <Text style={styles.editButtonText}>Edit Event</Text>
+      </Pressable>
+    </ScrollView>
   )
 }
 
-const DetailItem = ({ icon, text }: { icon: string; text: string }) => (
-  <View style={styles.detailItem}>
-    <Icon name={icon} size={20} color="#dc2626" />
-    <Text style={styles.detailText}>{text}</Text>
-  </View>
-)
-
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <View style={styles.section}>
-    <Text style={styles.sectionTitle}>{title}</Text>
-    {children}
-  </View>
-)
-
-const ContactItem = ({ name, subtitle, icon }: { name: string; subtitle: string; icon: string }) => (
-  <View style={styles.contactItem}>
-    <Icon name={icon} size={20} color="#64748b" />
-    <View style={styles.contactInfo}>
-      <Text style={styles.contactName}>{name}</Text>
-      <Text style={styles.contactSubtitle}>{subtitle}</Text>
+const LabelRow = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
+  <View style={styles.infoRow}>
+    <View style={styles.infoIconWrap}>
+      <Icon name={icon} size={18} color="#b91c1c" />
+    </View>
+    <View style={{ flex: 1 }}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
     </View>
   </View>
 )
@@ -277,158 +313,144 @@ const ContactItem = ({ name, subtitle, icon }: { name: string; subtitle: string;
 export default EditEvent
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
+  container: { 
+    paddingBottom: 28, 
+    backgroundColor: '#ffffff' 
   },
-  header: {
+  cover: { 
+    height: 170, 
+    width: '100%', 
+    backgroundColor: '#e2e8f0' 
+  },
+  title: { 
+    fontSize: 22, 
+    fontWeight: '900', 
+    color: '#991b1b', 
+    paddingHorizontal: 12, 
+    marginTop: 12 
+  },
+  description: { 
+    color: '#475569', 
+    paddingHorizontal: 12, 
+    marginTop: 8, 
+    lineHeight: 20 
+  },
+
+  infoRow: { 
+    flexDirection: 'row', 
+    paddingHorizontal: 12, 
+    paddingVertical: 12, 
+    alignItems: 'center', 
+    gap: 12 
+  },
+  infoIconWrap: { 
+    width: 34, 
+    height: 34, 
+    borderRadius: 17, 
+    backgroundColor: '#fee2e2', 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  infoLabel: { 
+    color: '#64748b', 
+    fontWeight: '700' 
+  },
+  infoValue: { 
+    color: '#0f172a', 
+    fontWeight: '700' 
+  },
+
+  sectionTitle: { 
+    paddingHorizontal: 12, 
+    marginTop: 12, 
+    fontWeight: '900', 
+    color: '#991b1b' 
+  },
+  orgRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 12, 
+    paddingHorizontal: 12, 
+    paddingVertical: 10 
+  },
+  orgAvatar: { 
+    width: 36, 
+    height: 36, 
+    borderRadius: 18, 
+    backgroundColor: '#e2e8f0', 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  orgName: { 
+    fontWeight: '800', 
+    color: '#0f172a' 
+  },
+  orgSub: { 
+    color: '#64748b' 
+  },
+
+  pocCard: {
+    marginHorizontal: 12,
+    marginTop: 8,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#dc2626',
+  pocLeft: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 10 
   },
-  banner: {
-    height: 200,
-    backgroundColor: '#0f766e',
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
+  pocAvatar: { 
+    width: 34, 
+    height: 34, 
+    borderRadius: 17, 
+    backgroundColor: '#e2e8f0', 
+    alignItems: 'center', 
+    justifyContent: 'center' 
   },
-  bannerContent: {
-    alignItems: 'center',
+  pocName: { 
+    fontWeight: '800', 
+    color: '#0f172a' 
   },
-  logoContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
+  pocRole: { 
+    color: '#64748b' 
   },
-  logoText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
+  pocPhone: { 
+    color: '#64748b' 
   },
-  bannerTitle: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 4,
+  pocActions: { 
+    flexDirection: 'row', 
+    gap: 10 
   },
-  bannerSubtitle: {
-    color: '#fff',
-    fontSize: 14,
-    opacity: 0.8,
+  circleBtn: { 
+    width: 34, 
+    height: 34, 
+    borderRadius: 17, 
+    backgroundColor: '#f8fafc', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    borderWidth: 1, 
+    borderColor: '#e2e8f0' 
   },
-  bannerTriangle: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 0,
-    height: 0,
-    backgroundColor: 'transparent',
-    borderStyle: 'solid',
-    borderLeftWidth: 30,
-    borderRightWidth: 0,
-    borderBottomWidth: 30,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#fff',
+  circleBtnGreen: { 
+    backgroundColor: '#f0fdf4', 
+    borderColor: '#dcfce7' 
   },
-  eventTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#dc2626',
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 12,
-  },
-  description: {
-    fontSize: 16,
-    color: '#64748b',
-    lineHeight: 24,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
-  detailsSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  detailText: {
-    fontSize: 16,
-    color: '#1e293b',
-    marginLeft: 12,
-  },
-  section: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#dc2626',
-    marginBottom: 12,
-  },
-  contactItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  contactInfo: {
-    marginLeft: 12,
-  },
-  contactName: {
-    fontSize: 16,
-    color: '#1e293b',
-    fontWeight: '500',
-  },
-  contactSubtitle: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  contactContainer: {
-    marginBottom: 16,
-  },
-  phoneNumber: {
-    fontSize: 14,
-    color: '#64748b',
-    marginLeft: 32,
-    marginBottom: 8,
-  },
-  contactActions: {
-    flexDirection: 'row',
-    marginLeft: 32,
-    gap: 12,
-  },
-  actionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f1f5f9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+
   linkContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8fafc',
     borderRadius: 8,
     padding: 12,
+    marginHorizontal: 12,
+    marginTop: 8,
   },
   linkText: {
     fontSize: 14,
@@ -441,12 +463,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#dc2626',
+    backgroundColor: '#9e0202',
     borderRadius: 12,
-    paddingVertical: 16,
-    marginHorizontal: 16,
-    marginBottom: 20,
+    paddingVertical: 14,
+    marginHorizontal: 12,
+    marginTop: 18,
     gap: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   editButtonText: {
     fontSize: 16,

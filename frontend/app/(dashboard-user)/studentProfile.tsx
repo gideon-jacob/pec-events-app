@@ -1,15 +1,37 @@
-import React from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import React, { useCallback } from 'react'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, ScrollView, RefreshControl } from 'react-native'
 import { Redirect, router } from 'expo-router'
 import { useAuth } from '../contexts/AuthContext'
+import { mockApi } from '../services/mockApi'
 import Icon from 'react-native-vector-icons/Ionicons'
 
 const StudentProfile = () => {
   const { state, signOut } = useAuth()
-  const handleChangePassword = () => {
-    // TODO: navigate to change password
-    console.log('Change password pressed')
-  }
+  const [loadingProfile, setLoadingProfile] = React.useState(true)
+  const [profileName, setProfileName] = React.useState<string | undefined>(undefined)
+  const [profileDept, setProfileDept] = React.useState<string | undefined>(undefined)
+  const [refreshing, setRefreshing] = React.useState(false)
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      const profile = await mockApi.fetchUserProfile({ role: 'user' })
+      setProfileName(profile?.name)
+      setProfileDept(profile?.department)
+    } catch (err) {
+      console.error('Failed to fetch profile', err)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    setLoadingProfile(true)
+    fetchProfile().finally(() => setLoadingProfile(false))
+  }, [fetchProfile])
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await fetchProfile()
+    setRefreshing(false)
+  }, [fetchProfile])
 
   const handleLogout = async () => {
     await signOut()
@@ -28,9 +50,13 @@ const StudentProfile = () => {
     return <Redirect href="/login" />
   }
   
-  const username = state.user?.registerNumber || state.user?.name || 'Student'
+  const username = profileName || state.user?.registerNumber || state.user?.name || 'Student'
   return (
-    <View style={styles.container}>
+    <ScrollView 
+      style={styles.scrollContainer}
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
       <Text style={styles.header}>Profile</Text>
 
       {/* Avatar */}
@@ -55,26 +81,30 @@ const StudentProfile = () => {
         <View style={styles.divider} />
 
         <Text style={styles.label}>Department</Text>
-        <Text style={styles.value}>{state.user?.department || '—'}</Text>
+        <Text style={styles.value}>{profileDept || state.user?.department || '—'}</Text>
       </View>
 
       {/* Actions */}
-      <Pressable style={styles.action} onPress={handleChangePassword}>
+      {/* <Pressable style={styles.action} onPress={handleChangePassword}>
         <Text style={styles.actionText}>Change Password</Text>
         <Icon name="chevron-forward" size={18} color="#9e0202" />
-      </Pressable>
+      </Pressable> */}
 
       <Pressable style={styles.action} onPress={handleLogout}>
         <Text style={styles.actionText}>Log Out</Text>
         <Icon name="exit-outline" size={18} color="#9e0202" />
       </Pressable>
-    </View>
+    </ScrollView>
   )
 }
 
 export default StudentProfile
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
 
   header:{
     fontSize: 20,

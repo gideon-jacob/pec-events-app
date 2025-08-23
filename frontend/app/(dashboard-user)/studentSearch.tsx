@@ -30,10 +30,19 @@ const StudentSearch = () => {
 
   useEffect(() => {
     let mounted = true
+    setLoading(true)
     ;(async () => {
       try {
-        const data = await mockApi.listSearchEvents()
+        const params = {
+          dept: selectedDepartment !== 'All Departments' ? selectedDepartment : undefined,
+          type: selectedCategory !== 'All' ? selectedCategory : undefined,
+          name: query.trim() !== '' ? query.trim() : undefined,
+        }
+        const data = await mockApi.listSearchEvents(params)
         if (mounted) setAllEvents(data)
+      } catch (error) {
+        console.error('Error fetching events:', error)
+        if (mounted) setAllEvents([])
       } finally {
         if (mounted) setLoading(false)
       }
@@ -41,17 +50,20 @@ const StudentSearch = () => {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [query, selectedDepartment, selectedCategory])
 
   const filtered = useMemo(() => {
     return allEvents.filter((e) => {
-      const matchesQuery = `${e.title} ${e.description}`.toLowerCase().includes(query.toLowerCase())
-      const matchesDept =
-        selectedDepartment === 'All Departments' || e.department === selectedDepartment
+      const matchesQuery = query.trim() === '' || 
+        e.title.toLowerCase().includes(query.toLowerCase().trim()) || 
+        e.description.toLowerCase().includes(query.toLowerCase().trim())
+      
+      const matchesDept = selectedDepartment === 'All Departments' || e.department === selectedDepartment
       const matchesCat = selectedCategory === 'All' || e.category === selectedCategory
+      
       return matchesQuery && matchesDept && matchesCat
     })
-  }, [query, selectedDepartment, selectedCategory])
+  }, [query, selectedDepartment, selectedCategory, allEvents])
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

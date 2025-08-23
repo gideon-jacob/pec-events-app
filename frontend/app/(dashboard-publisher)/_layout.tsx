@@ -37,8 +37,7 @@ const PublisherDashBoardLayout = () => {
       <Tabs.Screen
         name="create-event"
         options={{
-          title: 'Create',
-          headerShown: false,
+          title: 'Create Event',
           tabBarIcon: ({ color, size, focused }) => (
             <Icon name={focused ? 'add-circle' : 'add-circle-outline'} size={size} color={color} />
           ),

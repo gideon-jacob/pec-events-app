@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import {
   StyleSheet,
   Text,
@@ -10,11 +10,13 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Image,
+  RefreshControl,
 } from 'react-native'
 import { router } from 'expo-router'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { SearchEvent } from '../data/events'
 import { mockApi } from '../services/mockApi'
+import { invalidateCacheByPrefix } from '../services/cache'
 
 const departments = ['All Departments', 'CSE', 'AIML', 'AIDS', 'ECE', 'MECH', 'CIVIL', 'EEE'] as const
 const categories = ['All', 'Seminar', 'Workshop', 'Guest Lecture', 'Industrial Visit', 'Cultural', 'Sports'] as const
@@ -27,31 +29,40 @@ const PublisherHome = () => {
   const [catPickerVisible, setCatPickerVisible] = useState(false)
   const [events, setEvents] = useState<SearchEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
-  // Fetch events on component mount
-  React.useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const fetchedEvents = await mockApi.listSearchEvents()
-        setEvents(fetchedEvents)
-      } catch (error) {
-        console.error('Error fetching events:', error)
-      } finally {
-        setLoading(false)
+  const fetchEvents = useCallback(async () => {
+    try {
+      const params = {
+        dept: selectedDepartment !== 'All Departments' ? selectedDepartment : undefined,
+        type: selectedCategory !== 'All' ? selectedCategory : undefined,
+        name: searchQuery.trim() !== '' ? searchQuery.trim() : undefined,
       }
+      const fetched = await mockApi.listSearchEvents(params)
+      setEvents(fetched)
+    } catch (error) {
+      console.error('Error fetching events:', error)
     }
-    fetchEvents()
-  }, [])
+  }, [searchQuery, selectedDepartment, selectedCategory])
 
-  const filtered = useMemo(() => {
-    return events.filter((e) => {
-      const matchesQuery = `${e.title} ${e.description}`.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesDept =
-        selectedDepartment === 'All Departments' || e.department === selectedDepartment
-      const matchesCat = selectedCategory === 'All' || e.category === selectedCategory
-      return matchesQuery && matchesDept && matchesCat
-    })
-  }, [searchQuery, selectedDepartment, selectedCategory, events])
+  // Fetch and search via API when filters/search change
+  React.useEffect(() => {
+    setLoading(true)
+    fetchEvents().finally(() => setLoading(false))
+  }, [fetchEvents])
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await invalidateCacheByPrefix('publisher:events:')
+      await invalidateCacheByPrefix('student:events:')
+      await invalidateCacheByPrefix('student:events:list')
+    } catch {}
+    await fetchEvents()
+    setRefreshing(false)
+  }, [fetchEvents])
+
+  const filtered = events
 
   const handleEventPress = (eventId: string) => {
     router.push({ pathname: '/(dashboard-publisher)/edit-event', params: { id: eventId } })
@@ -66,7 +77,10 @@ const PublisherHome = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Icon name="search" size={20} color="#64748b" style={styles.searchIcon} />
@@ -136,7 +150,7 @@ const PublisherHome = () => {
       </Modal>
 
       {/* Events List */}
-      <ScrollView style={styles.eventsList} showsVerticalScrollIndicator={false}>
+      <View style={styles.eventsList}>
         {filtered.map((event) => (
           <TouchableOpacity
             key={event.id}
@@ -174,8 +188,8 @@ const PublisherHome = () => {
         {filtered.length === 0 && (
           <Text style={styles.noEventsText}>No events found.</Text>
         )}
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   )
 }
 

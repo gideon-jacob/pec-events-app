@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { invalidateCacheByPrefix } from '../services/cache'
 
 type Role = 'user' | 'publisher'
 
@@ -20,6 +21,7 @@ type AuthContextType = {
   state: AuthState
   signIn: (user: AuthUser) => Promise<void>
   signOut: () => Promise<void>
+  clearAllAuthData: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -67,26 +69,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
       setState({ status: 'authenticated', user })
+      // Clear any cached API data to avoid cross-user stale cache
+      try {
+        await invalidateCacheByPrefix('')
+      } catch {}
     } catch (error) {
       // Log error or show user feedback
       throw new Error('Failed to sign in: Could not save authentication state')
     }
   }, [])
 
-const signOut = useCallback(async () => {
-  try {
-    await AsyncStorage.removeItem(AUTH_STORAGE_KEY)
-    setState({ status: 'unauthenticated' })
-  } catch (error) {
-    // Even if storage removal fails, we should still update the state
-    // as the user explicitly requested to sign out
-    setState({ status: 'unauthenticated' })
-    // Log error for debugging
-    console.warn('Failed to remove auth data from storage:', error)
-  }
-}, [])
+  const signOut = useCallback(async () => {
+    try {
+      // Remove auth state
+      await AsyncStorage.removeItem(AUTH_STORAGE_KEY)
+      
+      // Remove publisher JWT token if it exists
+      try {
+        await AsyncStorage.removeItem('auth:publisher:jwt')
+        console.log('Publisher JWT token removed on logout')
+      } catch (tokenError) {
+        console.warn('Failed to remove publisher JWT token:', tokenError)
+      }
+      
+      setState({ status: 'unauthenticated' })
+      try {
+        // Clear cached API data on logout
+        await invalidateCacheByPrefix('')
+      } catch {}
+    } catch (error) {
+      // Even if storage removal fails, we should still update the state
+      // as the user explicitly requested to sign out
+      setState({ status: 'unauthenticated' })
+      // Log error for debugging
+      console.warn('Failed to remove auth data from storage:', error)
+    }
+  }, [])
 
-  const value = useMemo(() => ({ state, signIn, signOut }), [state, signIn, signOut])
+  const clearAllAuthData = useCallback(async () => {
+    try {
+      // Remove all auth-related data
+      await AsyncStorage.multiRemove([
+        AUTH_STORAGE_KEY,
+        'auth:publisher:jwt'
+      ])
+      console.log('All auth data cleared')
+      setState({ status: 'unauthenticated' })
+      try {
+        await invalidateCacheByPrefix('')
+      } catch {}
+    } catch (error) {
+      console.warn('Failed to clear all auth data:', error)
+      setState({ status: 'unauthenticated' })
+    }
+  }, [])
+
+  const value = useMemo(() => ({ state, signIn, signOut, clearAllAuthData }), [state, signIn, signOut, clearAllAuthData])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View, Image, Pressable, ActivityIndicator, Linking, Alert } from 'react-native'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useLocalSearchParams } from 'expo-router'
-import { type EventItem, type SearchEvent, getEventById } from '../data/events'
+import { type EventItem, type SearchEvent } from '../data/events'
 import { mockApi } from '../services/mockApi'
+import { contactUtils } from '../utils/contactUtils'
 
 type Params = {
   id?: string
@@ -13,6 +14,7 @@ type Params = {
   time?: string
   venue?: string
   type?: string
+  mode?: string
   eligibility?: string
   fee?: string
   imageUrl?: string
@@ -40,7 +42,7 @@ export default function EventDetail() {
     ;(async () => {
       try {
         if (!params.id) return
-        const data = await getEventById(params.id)
+        const data = await mockApi.getStudentEventById(params.id)
         if (isMounted) setEvent(data)
       } catch (error) {
         console.error('Failed to fetch event:', error)
@@ -82,8 +84,21 @@ export default function EventDetail() {
       <LabelRow icon="calendar-outline" label="Date & Time" value={`${(event as any)?.date || 'July 20, 2024'}, ${(event as any)?.time || '10:00 AM – 1:00 PM'}`} />
       <LabelRow icon="location-outline" label="Venue" value={(event as any)?.venue || 'College Auditorium (Offline)'} />
       <LabelRow icon="people-outline" label="Eligibility" value={(event as any)?.eligibility || 'Open to all students'} />
-      <LabelRow icon="pricetag-outline" label="Event Type" value={(event as any)?.type || (event as any)?.category || 'Seminar'} />
-      <LabelRow icon="cash-outline" label="Entry Fee" value={(event as any)?.fee || 'Free'} />
+      <LabelRow 
+        icon="pricetag-outline" 
+        label="Event Type" 
+        value={(event as any)?.type || (event as any)?.category || 'Seminar'} 
+      />
+      <LabelRow 
+        icon="globe-outline" 
+        label="Event Mode" 
+        value={event?.mode || 'Offline'} 
+      />
+      <LabelRow 
+        icon="cash-outline" 
+        label="Entry Fee" 
+        value={event?.fee || 'Free'} 
+      />
 
       {/* Organizers */}
       <Text style={styles.sectionTitle}>Organizers</Text>
@@ -135,19 +150,7 @@ export default function EventDetail() {
               <Pressable
                 style={styles.circleBtn}
                 onPress={async () => {
-                  const url = `tel:${c.phone}`
-                  try {
-                    const canOpen = await Linking.canOpenURL(url)
-                    if (canOpen) {
-                      await Linking.openURL(url)
-                    } else {
-                      Alert.alert('Cannot place call', 'Your device cannot handle phone calls for this number.')
-                      console.warn('Linking.canOpenURL returned false for', url)
-                    }
-                  } catch (error) {
-                    console.error('Failed to open phone URL', url, error)
-                    Alert.alert('Call failed', 'Unable to open the dialer. Please try again later.')
-                  }
+                  await contactUtils.makePhoneCall(c.phone)
                 }}
               >
                 <Icon name="call" size={16} color="#0f172a" />
@@ -155,26 +158,7 @@ export default function EventDetail() {
               <Pressable
                 style={[styles.circleBtn, styles.circleBtnGreen]}
                 onPress={async () => {
-                  const phone = c.phone.replace(/\s/g, '')
-                  const appUrl = `whatsapp://send?phone=${phone}`
-                  const webUrl = `https://wa.me/${phone}`
-                  try {
-                    const canOpenApp = await Linking.canOpenURL(appUrl)
-                    if (canOpenApp) {
-                      await Linking.openURL(appUrl)
-                      return
-                    }
-                    const canOpenWeb = await Linking.canOpenURL(webUrl)
-                    if (canOpenWeb) {
-                      await Linking.openURL(webUrl)
-                      return
-                    }
-                    Alert.alert('WhatsApp not available', 'WhatsApp is not installed, and the web link could not be opened.')
-                    console.warn('Neither WhatsApp app nor web link could be opened:', { appUrl, webUrl })
-                  } catch (error) {
-                    console.error('Failed to open WhatsApp URL', { appUrl, webUrl }, error)
-                    Alert.alert('Unable to open WhatsApp', 'Something went wrong while trying to open WhatsApp.')
-                  }
+                  await contactUtils.openWhatsApp(c.phone)
                 }}
               >
                 <Icon name="logo-whatsapp" size={16} color="#16a34a" />
@@ -197,21 +181,7 @@ export default function EventDetail() {
               <Pressable
                 style={styles.circleBtn}
                 onPress={async () => {
-                  const phoneRaw = '+91 98765 43210'
-                  const phone = phoneRaw.replace(/\s/g, '')
-                  const url = `tel:${phone}`
-                  try {
-                    const canOpen = await Linking.canOpenURL(url)
-                    if (canOpen) {
-                      await Linking.openURL(url)
-                    } else {
-                      Alert.alert('Cannot place call', 'Your device cannot handle phone calls for this number.')
-                      console.warn('Linking.canOpenURL returned false for', url)
-                    }
-                  } catch (error) {
-                    console.error('Failed to open phone URL', url, error)
-                    Alert.alert('Call failed', 'Unable to open the dialer. Please try again later.')
-                  }
+                  await contactUtils.makePhoneCall('+91 98765 43210')
                 }}
               >
                 <Icon name="call" size={16} color="#0f172a" />
@@ -219,27 +189,7 @@ export default function EventDetail() {
               <Pressable
                 style={[styles.circleBtn, styles.circleBtnGreen]}
                 onPress={async () => {
-                  const phoneRaw = '+91 98765 43210'
-                  const phone = phoneRaw.replace(/\s/g, '')
-                  const appUrl = `whatsapp://send?phone=${phone}`
-                  const webUrl = `https://wa.me/${phone}`
-                  try {
-                    const canOpenApp = await Linking.canOpenURL(appUrl)
-                    if (canOpenApp) {
-                      await Linking.openURL(appUrl)
-                      return
-                    }
-                    const canOpenWeb = await Linking.canOpenURL(webUrl)
-                    if (canOpenWeb) {
-                      await Linking.openURL(webUrl)
-                      return
-                    }
-                    Alert.alert('WhatsApp not available', 'WhatsApp is not installed, and the web link could not be opened.')
-                    console.warn('Neither WhatsApp app nor web link could be opened:', { appUrl, webUrl })
-                  } catch (error) {
-                    console.error('Failed to open WhatsApp URL', { appUrl, webUrl }, error)
-                    Alert.alert('Unable to open WhatsApp', 'Something went wrong while trying to open WhatsApp.')
-                  }
+                  await contactUtils.openWhatsApp('+91 98765 43210')
                 }}
               >
                 <Icon name="logo-whatsapp" size={16} color="#16a34a" />
@@ -259,21 +209,7 @@ export default function EventDetail() {
               <Pressable
                 style={styles.circleBtn}
                 onPress={async () => {
-                  const phoneRaw = '+91 98765 43211'
-                  const phone = phoneRaw.replace(/\s/g, '')
-                  const url = `tel:${phone}`
-                  try {
-                    const canOpen = await Linking.canOpenURL(url)
-                    if (canOpen) {
-                      await Linking.openURL(url)
-                    } else {
-                      Alert.alert('Cannot place call', 'Your device cannot handle phone calls for this number.')
-                      console.warn('Linking.canOpenURL returned false for', url)
-                    }
-                  } catch (error) {
-                    console.error('Failed to open phone URL', url, error)
-                    Alert.alert('Call failed', 'Unable to open the dialer. Please try again later.')
-                  }
+                  await contactUtils.makePhoneCall('+91 98765 43211')
                 }}
               >
                 <Icon name="call" size={16} color="#0f172a" />
@@ -281,27 +217,7 @@ export default function EventDetail() {
               <Pressable
                 style={[styles.circleBtn, styles.circleBtnGreen]}
                 onPress={async () => {
-                  const phoneRaw = '+91 98765 43211'
-                  const phone = phoneRaw.replace(/\s/g, '')
-                  const appUrl = `whatsapp://send?phone=${phone}`
-                  const webUrl = `https://wa.me/${phone}`
-                  try {
-                    const canOpenApp = await Linking.canOpenURL(appUrl)
-                    if (canOpenApp) {
-                      await Linking.openURL(appUrl)
-                      return
-                    }
-                    const canOpenWeb = await Linking.canOpenURL(webUrl)
-                    if (canOpenWeb) {
-                      await Linking.openURL(webUrl)
-                      return
-                    }
-                    Alert.alert('WhatsApp not available', 'WhatsApp is not installed, and the web link could not be opened.')
-                    console.warn('Neither WhatsApp app nor web link could be opened:', { appUrl, webUrl })
-                  } catch (error) {
-                    console.error('Failed to open WhatsApp URL', { appUrl, webUrl }, error)
-                    Alert.alert('Unable to open WhatsApp', 'Something went wrong while trying to open WhatsApp.')
-                  }
+                  await contactUtils.openWhatsApp('+91 98765 43211')
                 }}
               >
                 <Icon name="logo-whatsapp" size={16} color="#16a34a" />
@@ -311,12 +227,12 @@ export default function EventDetail() {
         </>
       )}
 
-      {/* Interest CTA */}
+      {/* Interest CTA
       <Text style={styles.sectionTitleCentered}>Are you interested?</Text>
       <View style={styles.interestRow}>
         <Pressable style={[styles.interestBtn, styles.interestYes]}><Text style={styles.interestYesText}>Yes</Text></Pressable>
         <Pressable style={[styles.interestBtn, styles.interestNo]}><Text style={styles.interestNoText}>No</Text></Pressable>
-      </View>
+      </View> */}
 
       {/* Register CTA */}
       <Pressable

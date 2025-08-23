@@ -1,10 +1,11 @@
-import React from 'react'
-import { Image, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native'
+import React, { useCallback, useState } from 'react'
+import { Image, ScrollView, StyleSheet, Text, View, Pressable, RefreshControl } from 'react-native'
 import Icon from 'react-native-vector-icons/Ionicons'
 import FontAwesome from 'react-native-vector-icons/FontAwesome5'
 import { router } from 'expo-router'
 import { type EventItem } from '../data/events'
 import { mockApi } from '../services/mockApi'
+import { invalidateCacheByPrefix } from '../services/cache'
 
 
 
@@ -49,7 +50,7 @@ const EventCard = ({ item }: { item: EventItem }) => (
       <Text style={styles.cardSubTitle}>
         {item.date} · {item.time}
       </Text>
-      <Text style={styles.cardDesc}>{item.description}</Text>
+      <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
     </View>
   </Pressable>
 )
@@ -57,24 +58,37 @@ const EventCard = ({ item }: { item: EventItem }) => (
 const StudentHome = () => {
   const [events, setEvents] = React.useState<EventItem[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [refreshing, setRefreshing] = React.useState(false)
 
-  React.useEffect(() => {
-    let isMounted = true
-    ;(async () => {
-      try {
-        const data = await mockApi.listHomeEvents()
-        if (isMounted) setEvents(data)
-      } finally {
-        if (isMounted) setLoading(false)
-      }
-    })()
-    return () => {
-      isMounted = false
-    }
+  const fetchEvents = useCallback(async () => {
+    try {
+      const data = await mockApi.listStudentHomeEvents()
+      setEvents(data)
+    } catch (err: any) {
+      console.error('Load student events error:', err)
+    } 
   }, [])
 
+  React.useEffect(() => {
+    setLoading(true)
+    fetchEvents().finally(() => setLoading(false))
+  }, [fetchEvents])
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await invalidateCacheByPrefix('student:events:')
+      await invalidateCacheByPrefix('student:events:list')
+    } catch {}
+    await fetchEvents()
+    setRefreshing(false)
+  }, [fetchEvents])
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView 
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Home</Text>
       </View>
