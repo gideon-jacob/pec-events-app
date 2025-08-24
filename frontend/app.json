@@ -1,7 +1,7 @@
 {
   "expo": {
     "scheme": "peceventapp",
-    "name": "pec-event-app",
+    "name": "PEC Events",
     "slug": "pec-event-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,21 +16,37 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gideonjacob.peceventapp",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.gideonjacob.peceventapp"
+      "package": "com.gideonjacob.peceventapp",
+      "permissions": [
+        "android.permission.CALL_PHONE",
+        "android.permission.READ_PHONE_STATE"
+      ],
+      "intentFilters": [
+        {
+          "action": "android.intent.action.CALL",
+          "category": ["android.intent.category.DEFAULT"],
+          "data": {
+            "scheme": "tel"
+          }
+        }
+      ]
     },
     "web": {
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-router"],
+    
     "extra": {
       "router": {},
       "eas": {
